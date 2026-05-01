@@ -31,7 +31,7 @@ You'll need Python 3.10+.
 
 ```bash
 pip install -r requirements.txt
-python main.py
+python crystal_cavern.py
 ```
 
 That's it. The window opens, the game loads any prior save, credits offline
@@ -56,7 +56,7 @@ the `CRYSTAL_CAVERN_SAVE` environment variable — handy for running a
 second fresh playthrough without losing your main save:
 
 ```bash
-CRYSTAL_CAVERN_SAVE=/tmp/second.json python main.py
+CRYSTAL_CAVERN_SAVE=/tmp/second.json python crystal_cavern.py
 ```
 
 Deleting the save file starts a new game.
@@ -65,7 +65,7 @@ Deleting the save file starts a new game.
 
 ```
 idle-game/
-├── main.py                  # Entry point — just calls src.game.run
+├── crystal_cavern.py        # Entry point — just calls src.game.run
 ├── requirements.txt
 ├── README.md
 ├── CLAUDE.md                # Notes for AI assistants working on this repo

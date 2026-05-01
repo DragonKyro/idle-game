@@ -18,13 +18,13 @@ theme-agnostic.
 
 ```bash
 pip install -r requirements.txt
-python main.py          # launch the game
+python crystal_cavern.py   # launch the game
 pytest                  # run unit tests (50 tests, all pure-Python)
 ```
 
 Point the save file elsewhere to avoid clobbering a real playthrough:
 ```bash
-CRYSTAL_CAVERN_SAVE=/tmp/dev.json python main.py
+CRYSTAL_CAVERN_SAVE=/tmp/dev.json python crystal_cavern.py
 ```
 
 ## Architecture at a glance
@@ -35,7 +35,7 @@ tests depend on it.
 
 ```
                  ┌───────────────────────────────────────┐
-                 │             main.py (entry)           │
+                 │        crystal_cavern.py (entry)      │
                  └───────────────────┬───────────────────┘
                                      │
                  ┌───────────────────▼───────────────────┐

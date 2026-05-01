@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import math
 import random
-import time
 
 import arcade
 from PIL import Image, ImageDraw
@@ -19,12 +18,15 @@ from src.constants import (
     COLOR_BG_BOTTOM,
     COLOR_BG_TOP,
     COLOR_TEXT_DIM,
+    COLOR_TEXT_GOLD,
+    COLOR_TEXT_PRIMARY,
     PLAY_AREA_WIDTH,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
+from src.entities.crystal_aura import CrystalAura
 from src.entities.main_clicker import MainClicker
-from src.game_state import GameState
+from src.game_state import CRYSTAL_MAX_TIER, GameState
 from src.generators import GENERATORS, GENERATORS_BY_KEY
 from src.number_format import format_number
 from src.save_system import apply_offline_earnings, load_game, save_game
@@ -33,11 +35,15 @@ from src.sprite_factory import (
     main_crystal_texture,
     shard_particle_texture,
 )
+from src.ui.button import Button
+from src.ui.descend_modal import DescendModal
 from src.ui.floating_text import FloatingTextLayer
 from src.ui.particles import ParticleBurst
 from src.ui.shop_panel import ShopPanel
 from src.ui.stats_panel import StatsPanel
+from src.ui.toast import ToastLayer
 from src.ui.welcome_back import WelcomeBackModal
+from src.upgrades import UPGRADES_BY_KEY
 
 
 class _Ambient:
@@ -74,11 +80,7 @@ class _Ambient:
 
 
 def _make_background_texture() -> arcade.Texture:
-    """Vertical gradient drawn once and blitted per frame.
-
-    Cheaper than drawing dozens of horizontal strips every frame.
-    """
-    # Keep it small; we'll stretch at blit time.
+    """Vertical gradient drawn once and blitted per frame."""
     w, h = 32, 256
     img = Image.new("RGBA", (w, h))
     d = ImageDraw.Draw(img)
@@ -87,8 +89,6 @@ def _make_background_texture() -> arcade.Texture:
         r = int(COLOR_BG_TOP[0] * (1 - t) + COLOR_BG_BOTTOM[0] * t)
         g = int(COLOR_BG_TOP[1] * (1 - t) + COLOR_BG_BOTTOM[1] * t)
         b = int(COLOR_BG_TOP[2] * (1 - t) + COLOR_BG_BOTTOM[2] * t)
-        # Arcade treats image y=0 as top; we want top color at the top of
-        # the screen, so draw directly without flipping.
         d.line([(0, y), (w, y)], fill=(r, g, b, 255))
     return arcade.Texture(img)
 
@@ -104,9 +104,11 @@ class GameView(arcade.View):
         if loaded is not None:
             elapsed, gained = apply_offline_earnings(self.state)
 
-        # --- Textures. ---
+        # --- Textures (one main-crystal texture per tier, pre-generated). ---
         self._bg_texture = _make_background_texture()
-        self._crystal_texture = main_crystal_texture()
+        self._crystal_textures: list[arcade.Texture] = [
+            main_crystal_texture(t) for t in range(CRYSTAL_MAX_TIER + 1)
+        ]
         self._particle_texture = shard_particle_texture()
         self._generator_textures: dict[str, arcade.Texture] = {
             g.key: generator_texture(g) for g in GENERATORS
@@ -114,14 +116,44 @@ class GameView(arcade.View):
 
         # --- Entities / UI. ---
         self._ambient = _Ambient()
-        self._clicker = MainClicker(self._crystal_texture)
+        initial_tier = self.state.crystal_tier()
+        self._current_tier = initial_tier
+        self._clicker = MainClicker(self._crystal_textures[initial_tier])
+        self._aura = CrystalAura(self._generator_textures)
         self._particles = ParticleBurst(self._particle_texture)
         self._floating = FloatingTextLayer()
+        self._toasts = ToastLayer()
         self._shop = ShopPanel(self._generator_textures)
         self._stats = StatsPanel(self._generator_textures)
+
+        self._autosave_hint = arcade.Text(
+            "Autosaves every 15s • F5 to save now",
+            PLAY_AREA_WIDTH - 16, 12,
+            COLOR_TEXT_DIM,
+            font_size=10, anchor_x="right", anchor_y="baseline", italic=True,
+        )
+
+        # Descend button — bottom-center of the play area, above the
+        # autosave hint. Rendered only when the player can descend.
+        self._descend_button = Button(
+            left=PLAY_AREA_WIDTH / 2 - 170, bottom=40, width=340, height=56,
+        )
+        self._descend_label = arcade.Text(
+            "", self._descend_button.center_x, self._descend_button.center_y + 8,
+            COLOR_TEXT_PRIMARY, font_size=16,
+            anchor_x="center", anchor_y="center", bold=True,
+        )
+        self._descend_sub = arcade.Text(
+            "", self._descend_button.center_x, self._descend_button.center_y - 12,
+            COLOR_TEXT_GOLD, font_size=12,
+            anchor_x="center", anchor_y="center",
+        )
+        self._descend_pulse = 0.0  # pulsing glow when button is active
+
         self._welcome: WelcomeBackModal | None = None
         if gained >= 1:
             self._welcome = WelcomeBackModal(elapsed, gained)
+        self._descend_modal: DescendModal | None = None
 
         # --- Timers. ---
         self._time_since_autosave = 0.0
@@ -138,9 +170,11 @@ class GameView(arcade.View):
         self._shop.on_mouse_motion(x, y)
         if self._welcome:
             self._welcome.on_mouse_motion(x, y)
+        if self._descend_modal:
+            self._descend_modal.on_mouse_motion(x, y)
 
     def on_mouse_scroll(self, x: int, y: int, scroll_x: int, scroll_y: int) -> None:
-        if self._welcome and self._welcome.visible:
+        if self._blocking_modal_visible():
             return
         self._shop.on_mouse_scroll(x, y, scroll_y)
 
@@ -151,18 +185,26 @@ class GameView(arcade.View):
         if self._welcome and self._welcome.visible:
             self._welcome.handle_click(x, y)
             return
+        if self._descend_modal and self._descend_modal.visible:
+            self._descend_modal.handle_click(x, y)
+            if self._descend_modal.confirmed:
+                self._apply_descent()
+            if not self._descend_modal.visible:
+                self._descend_modal = None
+            return
+
+        if self.state.can_descend() and self._descend_button.contains(x, y):
+            self._descend_modal = DescendModal(self.state)
+            return
 
         if self._shop.contains(x, y):
             intent = self._shop.handle_click(x, y, self.state)
             if intent is None:
                 return
             if intent["kind"] == "buy_generator":
-                gen = GENERATORS_BY_KEY.get(intent["key"])
-                if gen and self.state.buy_generator(gen):
-                    save_game(self.state)
+                self._try_buy_generator(intent["key"])
             elif intent["kind"] == "buy_upgrade":
-                if self.state.buy_upgrade(intent["key"]):
-                    save_game(self.state)
+                self._try_buy_upgrade(intent["key"])
             return
 
         if self._clicker.contains(x, y):
@@ -186,6 +228,95 @@ class GameView(arcade.View):
             save_game(self.state)
 
     # ------------------------------------------------------------------
+    # Purchase / descent plumbing.
+    # ------------------------------------------------------------------
+
+    def _try_buy_generator(self, key: str) -> None:
+        gen = GENERATORS_BY_KEY.get(key)
+        if gen is None or not self.state.buy_generator(gen):
+            return
+        owned = self.state.owned.get(key, 0)
+        self._on_purchase_feedback(
+            key=key,
+            toast_text=f"+1 {gen.name}  (x{owned})",
+            accent=gen.color,
+        )
+        save_game(self.state)
+
+    def _try_buy_upgrade(self, key: str) -> None:
+        if not self.state.buy_upgrade(key):
+            return
+        upgrade = UPGRADES_BY_KEY.get(key)
+        if upgrade is None:
+            return
+        accent = self._upgrade_accent(upgrade)
+        level = self.state.upgrade_level(key)
+        if level >= upgrade.max_level:
+            toast = f"{upgrade.name} MAXED! (Lv {level}/{upgrade.max_level})"
+        else:
+            toast = f"{upgrade.name}  Lv {level}/{upgrade.max_level}"
+        self._on_purchase_feedback(key=key, toast_text=toast, accent=accent)
+        save_game(self.state)
+
+    def _upgrade_accent(self, upgrade) -> tuple[int, int, int]:
+        """Gold for click/global upgrades; the generator's color for gen:* ones."""
+        if upgrade.effect.startswith("gen:"):
+            gen = GENERATORS_BY_KEY.get(upgrade.effect.split(":", 1)[1])
+            if gen is not None:
+                return gen.color
+        if upgrade.effect == "click":
+            return (255, 214, 110)  # warm gold
+        return (180, 150, 255)  # global — violet
+
+    def _on_purchase_feedback(
+        self,
+        *,
+        key: str,
+        toast_text: str,
+        accent: tuple[int, int, int],
+    ) -> None:
+        """Fire every purchase confirmation effect at once."""
+        self._shop.flash(key)
+        self._toasts.spawn(toast_text, accent)
+        self._clicker.register_purchase()
+        self._particles.emit(
+            self._clicker.center_x,
+            self._clicker.center_y,
+            CLICK_PARTICLE_COUNT + 6,
+            color=accent,
+        )
+        # Tier may have just bumped thanks to the new upgrade.
+        self._maybe_swap_crystal()
+
+    def _maybe_swap_crystal(self) -> None:
+        new_tier = self.state.crystal_tier()
+        if new_tier != self._current_tier:
+            self._current_tier = new_tier
+            self._clicker.set_texture(self._crystal_textures[new_tier])
+
+    def _apply_descent(self) -> None:
+        gained = self.state.descend()
+        if gained <= 0:
+            return
+        self._toasts.spawn(f"Descended! +{gained} Essence", (255, 220, 140))
+        self._particles.emit(
+            self._clicker.center_x,
+            self._clicker.center_y,
+            30,
+            color=(240, 220, 255),
+        )
+        self._clicker.register_purchase()
+        self._maybe_swap_crystal()
+        save_game(self.state)
+
+    def _blocking_modal_visible(self) -> bool:
+        if self._welcome and self._welcome.visible:
+            return True
+        if self._descend_modal and self._descend_modal.visible:
+            return True
+        return False
+
+    # ------------------------------------------------------------------
     # Update loop.
     # ------------------------------------------------------------------
 
@@ -195,9 +326,16 @@ class GameView(arcade.View):
         self.state.tick(delta_time)
 
         self._ambient.update(delta_time)
+        self._aura.update(delta_time)
         self._clicker.update(delta_time)
         self._particles.update(delta_time)
         self._floating.update(delta_time)
+        self._toasts.update(delta_time)
+        self._shop.update(delta_time)
+
+        # Descend button pulse when active.
+        if self.state.can_descend():
+            self._descend_pulse = (self._descend_pulse + delta_time) % (math.tau / 2)
 
         self._time_since_autosave += delta_time
         if self._time_since_autosave >= AUTOSAVE_INTERVAL_SECONDS:
@@ -215,36 +353,53 @@ class GameView(arcade.View):
         bg_rect = arcade.LBWH(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
         arcade.draw_texture_rect(self._bg_texture, bg_rect)
 
-        # Play area visuals.
+        # Play area visuals. The aura draws BEHIND the crystal so the
+        # upgrade ring reads as a frame and the orbiting emblems pass
+        # behind the crystal faces.
         self._ambient.draw()
+        self._aura.draw(self.state)
         self._clicker.draw()
         self._particles.draw()
         self._floating.draw()
+        self._toasts.draw()
 
         # HUD and shop.
         self._stats.draw(self.state)
         self._shop.draw(self.state)
 
-        # Save hint (bottom-right of play area).
-        arcade.draw_text(
-            "Autosaves every 15s • F5 to save now",
-            PLAY_AREA_WIDTH - 16,
-            12,
-            COLOR_TEXT_DIM,
-            font_size=10,
-            anchor_x="right",
-            anchor_y="baseline",
-            italic=True,
-        )
+        if self.state.can_descend():
+            self._draw_descend_button()
 
-        # Modal last so it sits on top of everything.
+        # Save hint (bottom-right of play area).
+        self._autosave_hint.draw()
+
+        # Modals last so they sit on top of everything.
         if self._welcome and self._welcome.visible:
             self._welcome.draw()
+        if self._descend_modal and self._descend_modal.visible:
+            self._descend_modal.draw()
+
+    def _draw_descend_button(self) -> None:
+        hovered = self._descend_button.contains(self._mouse_x, self._mouse_y)
+        self._descend_button.draw_background(hovered=hovered, affordable=True)
+        # Outer pulsing border — subtle "something is available" cue.
+        glow = 0.5 + 0.5 * math.sin(self._descend_pulse * 4)
+        border_alpha = int(80 + 120 * glow)
+        outline = arcade.LBWH(
+            self._descend_button.left - 3, self._descend_button.bottom - 3,
+            self._descend_button.width + 6, self._descend_button.height + 6,
+        )
+        arcade.draw_rect_outline(outline, (255, 220, 140, border_alpha), border_width=2)
+
+        pending = self.state.pending_essence()
+        self._descend_label.text = "⬇  Descend Deeper"
+        self._descend_sub.text = f"+{pending} Essence  (x{(1 + 0.02 * (self.state.essence + pending)):.2f} total)"
+        self._descend_label.draw()
+        self._descend_sub.draw()
 
     # ------------------------------------------------------------------
     # Lifecycle.
     # ------------------------------------------------------------------
 
     def on_hide_view(self) -> None:
-        # View-level catch — Window.on_close is the primary save trigger.
         save_game(self.state)

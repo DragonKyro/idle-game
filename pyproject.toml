@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crystal-cavern"
+version = "1.0.0"
+description = "A cozy dwarven-fantasy idle/clicker game built with Python Arcade."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Kyle Lui" }]
+keywords = ["game", "idle", "clicker", "arcade", "pixel-art"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: X11 Applications",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: MacOS X",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Games/Entertainment :: Arcade",
+]
+
+dependencies = [
+    "arcade>=3.3.0,<4.0",
+    "pillow>=10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+# Installs a `crystal-cavern` command alongside `python crystal_cavern.py`.
+crystal-cavern = "src.game:run"
+
+[project.urls]
+Repository = "https://github.com/"
+
+[tool.setuptools]
+# This repo uses a flat layout with `src/` as a package, not a src-layout.
+packages = ["src", "src.ui", "src.entities"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra --strict-markers"

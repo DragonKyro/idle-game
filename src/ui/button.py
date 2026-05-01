@@ -1,4 +1,8 @@
-"""Simple rectangular button rendered with arcade primitives."""
+"""Simple rectangular button rendered with arcade primitives.
+
+Text labels live on whoever owns the button (as cached ``arcade.Text``
+objects) so we avoid the per-frame cost of ``arcade.draw_text``.
+"""
 
 from __future__ import annotations
 
@@ -13,8 +17,6 @@ from src.constants import (
     COLOR_BUTTON_HOVER,
     COLOR_BUTTON_IDLE,
     COLOR_PANEL_BORDER,
-    COLOR_TEXT_DIM,
-    COLOR_TEXT_PRIMARY,
 )
 
 
@@ -66,31 +68,3 @@ class Button:
         rect = arcade.LBWH(self.left, self.bottom, self.width, self.height)
         arcade.draw_rect_filled(rect, fill)
         arcade.draw_rect_outline(rect, COLOR_PANEL_BORDER, border_width=2)
-
-    def draw_label(
-        self,
-        text: str,
-        *,
-        font_size: float = 14,
-        bold: bool = False,
-        dim: bool = False,
-        anchor_x: str = "center",
-        dx: float = 0,
-        dy: float = 0,
-    ) -> None:
-        color = COLOR_TEXT_DIM if dim else COLOR_TEXT_PRIMARY
-        x = {
-            "left": self.left + 12,
-            "center": self.center_x,
-            "right": self.right - 12,
-        }[anchor_x]
-        arcade.draw_text(
-            text,
-            x + dx,
-            self.center_y + dy,
-            color,
-            font_size=font_size,
-            anchor_x=anchor_x,
-            anchor_y="center",
-            bold=bold,
-        )

@@ -296,7 +296,33 @@ def _draw_astral(accent: tuple[int, int, int]) -> Image.Image:
     return _finalize(img)
 
 
-def _draw_crystal(accent: tuple[int, int, int] = (160, 230, 255), size: int = 160) -> Image.Image:
+# Crystal tier palettes and names. Tier 0 is the starting crystal; higher
+# tiers are unlocked by purchased upgrades / prestige. Picked for clear
+# visual distinction at a glance.
+_CRYSTAL_TIER_ACCENTS: list[tuple[int, int, int]] = [
+    (160, 230, 255),  # 0: cyan — default cavern
+    (150, 240, 200),  # 1: mint — after first few upgrades
+    (200, 170, 255),  # 2: lavender
+    (255, 220, 130),  # 3: gold
+    (255, 160, 200),  # 4: rose
+    (220, 200, 255),  # 5: prismatic
+    (240, 240, 255),  # 6: cosmic (with star speckles)
+]
+CRYSTAL_TIER_NAMES: list[str] = [
+    "Cavern", "Verdant", "Dusk", "Golden", "Rose", "Prismatic", "Cosmic",
+]
+
+
+def _crystal_accent_for_tier(tier: int) -> tuple[int, int, int]:
+    return _CRYSTAL_TIER_ACCENTS[max(0, min(tier, len(_CRYSTAL_TIER_ACCENTS) - 1))]
+
+
+def _draw_crystal(
+    accent: tuple[int, int, int] = (160, 230, 255),
+    *,
+    tier: int = 0,
+    size: int = 160,
+) -> Image.Image:
     """Main clicker crystal — bigger and smoother than the shop icons."""
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -314,14 +340,38 @@ def _draw_crystal(accent: tuple[int, int, int] = (160, 230, 255), size: int = 16
     # Facet lines for depth.
     light = _shade(accent, 0.4)
     dark = _shade(accent, -0.3)
-    d.polygon(
-        [points[0], points[1], (cx, cy), points[5]],
-        fill=light,
-    )
-    d.polygon(
-        [points[3], points[4], (cx, cy), points[5]],
-        fill=dark,
-    )
+    d.polygon([points[0], points[1], (cx, cy), points[5]], fill=light)
+    d.polygon([points[3], points[4], (cx, cy), points[5]], fill=dark)
+
+    # Tier-specific flourishes layered on top of the base crystal.
+    if tier >= 2:
+        # Extra diagonal facet for a "shaped" gem look.
+        d.polygon([points[1], points[2], (cx, cy)], fill=_shade(accent, -0.1))
+    if tier >= 3:
+        # Sparkle inside the upper facet.
+        d.ellipse((cx - 3, cy - size // 3, cx + 3, cy - size // 3 + 6),
+                  fill=(255, 255, 255, 230))
+    if tier >= 4:
+        # Aurora line sweeping through.
+        d.line([(cx - size // 3, cy), (cx + size // 3, cy)],
+               fill=_shade(accent, 0.6), width=2)
+    if tier >= 5:
+        # Prismatic facet tips in complementary hues.
+        rainbow = [(255, 120, 140), (140, 255, 180), (140, 180, 255)]
+        for i, color in enumerate(rainbow):
+            tip = points[i * 2 % len(points)]
+            d.polygon([tip, (cx, cy), points[(i * 2 + 1) % len(points)]],
+                      fill=(*color, 90))
+    if tier >= 6:
+        # Cosmic tier: star speckles floating inside the crystal body.
+        rng = random.Random(7)
+        for _ in range(18):
+            sx = rng.randint(cx - size // 4, cx + size // 4)
+            sy = rng.randint(cy - size // 3, cy + size // 3)
+            d.point((sx, sy), fill=(255, 255, 255))
+            if rng.random() < 0.3:
+                d.point((sx + 1, sy), fill=(255, 255, 255))
+
     d.line([points[0], (cx, cy)], fill=(255, 255, 255), width=2)
     d.line([points[1], (cx, cy)], fill=(255, 255, 255), width=1)
     # Inner highlight.
@@ -329,11 +379,12 @@ def _draw_crystal(accent: tuple[int, int, int] = (160, 230, 255), size: int = 16
         [(cx - 6, cy - size // 4), (cx + 2, cy - size // 4), (cx - 2, cy - 4)],
         fill=(255, 255, 255, 180),
     )
-    # Soft outer glow.
+    # Soft outer glow — brighter at higher tiers.
     glow = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)
-    gd.polygon(points, fill=(*accent, 80))
-    glow = glow.filter(ImageFilter.GaussianBlur(radius=6))
+    glow_alpha = min(180, 80 + tier * 16)
+    gd.polygon(points, fill=(*accent, glow_alpha))
+    glow = glow.filter(ImageFilter.GaussianBlur(radius=6 + tier))
     out = Image.alpha_composite(glow, img)
     return out
 
@@ -373,9 +424,15 @@ def generator_texture(gen: GeneratorDef) -> arcade.Texture:
     return _cache_and_wrap(img, f"gen_{gen.key}.png")
 
 
-def main_crystal_texture() -> arcade.Texture:
-    img = _draw_crystal()
-    return _cache_and_wrap(img, "main_crystal.png")
+def main_crystal_texture(tier: int = 0) -> arcade.Texture:
+    """Render the main clickable crystal for a given tier.
+
+    Tiers are stable visual presets. Pre-generate all of them at startup
+    and swap references on the ``MainClicker`` when the tier changes.
+    """
+    accent = _crystal_accent_for_tier(tier)
+    img = _draw_crystal(accent, tier=tier)
+    return _cache_and_wrap(img, f"main_crystal_tier_{tier}.png")
 
 
 def shard_particle_texture() -> arcade.Texture:

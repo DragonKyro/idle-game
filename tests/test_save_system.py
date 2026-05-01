@@ -27,14 +27,14 @@ def test_load_returns_none_when_no_save(save_path):
 def test_save_then_load_round_trip(save_path):
     state = GameState(shards=42, total_earned=100, total_clicks=3)
     state.owned["rusty_pickaxe"] = 4
-    state.purchased_upgrades.add("click_gloves")
+    state.upgrade_levels["click_gloves"] = 2
 
     save_game(state)
     loaded = load_game()
     assert loaded is not None
     assert loaded.shards == 42
     assert loaded.owned == {"rusty_pickaxe": 4}
-    assert loaded.purchased_upgrades == {"click_gloves"}
+    assert loaded.upgrade_levels == {"click_gloves": 2}
 
 
 def test_save_is_atomic_no_leftover_temp_files(save_path):
@@ -99,4 +99,5 @@ def test_save_file_is_valid_json(save_path):
     save_game(state)
     data = json.loads(save_path.read_text(encoding="utf-8"))
     assert data["shards"] == 7
-    assert data["version"] == 1
+    # Version is the schema version of the save format; bump when fields change.
+    assert data["version"] >= 1

@@ -2,24 +2,30 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import arcade
 
 from src.constants import COLOR_TEXT_GOLD, FLOATING_TEXT_LIFETIME
 
 
-@dataclass
 class FloatingText:
-    text: str
-    x: float
-    y: float
-    age: float = 0.0
-    velocity_y: float = 60.0  # pixels per second
+    """One floating '+N' label. Owns a cached ``arcade.Text`` so the glyph
+    layout only runs once (at spawn), and each subsequent frame only
+    updates position and alpha — both cheap on a pre-laid-out Text.
+    """
+
+    __slots__ = ("_label", "age", "velocity_y")
+
+    def __init__(self, text: str, x: float, y: float) -> None:
+        self._label = arcade.Text(
+            text, x, y, COLOR_TEXT_GOLD,
+            font_size=22, anchor_x="center", anchor_y="center", bold=True,
+        )
+        self.age = 0.0
+        self.velocity_y = 60.0  # pixels per second
 
     def update(self, delta: float) -> None:
         self.age += delta
-        self.y += self.velocity_y * delta
+        self._label.y += self.velocity_y * delta
         # Decelerate so the text settles as it fades.
         self.velocity_y *= max(0.0, 1.0 - delta * 1.2)
 
@@ -29,20 +35,11 @@ class FloatingText:
 
     def draw(self) -> None:
         t = self.age / FLOATING_TEXT_LIFETIME
-        alpha = int(255 * (1.0 - t))
-        color = (*COLOR_TEXT_GOLD, max(0, min(255, alpha)))
-        # Font size eases up a touch early on for a little pop.
-        scale = 1.0 + 0.3 * min(1.0, self.age * 4.0)
-        arcade.draw_text(
-            self.text,
-            self.x,
-            self.y,
-            color,
-            font_size=20 * scale,
-            anchor_x="center",
-            anchor_y="center",
-            bold=True,
-        )
+        alpha = max(0, min(255, int(255 * (1.0 - t))))
+        # Setting .color is a cheap attribute write — no glyph layout.
+        r, g, b = COLOR_TEXT_GOLD
+        self._label.color = (r, g, b, alpha)
+        self._label.draw()
 
 
 class FloatingTextLayer:

@@ -91,11 +91,13 @@ class StatsPanel:
                 font_size=11, anchor_x="right", anchor_y="center",
             )
 
-    def draw(self, state: GameState) -> None:
-        self._draw_top_hud(state)
+    def draw(self, state: GameState, *, wallet_display: float | None = None) -> None:
+        """`wallet_display` lets the caller pass a tweened value so the
+        wallet counts up smoothly; falls back to the exact state value."""
+        self._draw_top_hud(state, wallet_display)
         self._draw_bottom_roster(state)
 
-    def _draw_top_hud(self, state: GameState) -> None:
+    def _draw_top_hud(self, state: GameState, wallet_display: float | None) -> None:
         top = SCREEN_HEIGHT
         bottom = SCREEN_HEIGHT - _STATS_HEIGHT
         rect = arcade.LBWH(0, bottom, PLAY_AREA_WIDTH, _STATS_HEIGHT)
@@ -103,7 +105,9 @@ class StatsPanel:
         border = arcade.LBWH(0, bottom, PLAY_AREA_WIDTH, 2)
         arcade.draw_rect_filled(border, COLOR_PANEL_BORDER)
 
-        self._wallet.text = format_number(state.shards)
+        self._wallet.text = format_number(
+            wallet_display if wallet_display is not None else state.shards
+        )
         self._click_power.text = f"Click power: {format_number(state.click_power())}"
         self._rate.text = f"+{format_rate(state.total_rate())}"
         self._total_earned.text = f"Total earned: {format_number(state.total_earned)}"

@@ -13,7 +13,6 @@ import tempfile
 import time
 from pathlib import Path
 
-from src.constants import OFFLINE_CAP_SECONDS, OFFLINE_EFFICIENCY
 from src.game_state import GameState
 
 
@@ -73,9 +72,12 @@ def apply_offline_earnings(
 ) -> tuple[float, float]:
     """Credit offline earnings based on `last_saved_at`.
 
-    Returns ``(elapsed_seconds, shards_gained)`` for display in the welcome-
-    back banner. Elapsed time is capped by OFFLINE_CAP_SECONDS, and the rate
-    is scaled by OFFLINE_EFFICIENCY so active play remains more rewarding.
+    The cap and efficiency live on the state (so talents like
+    ``rested_helpers`` and ``long_shift`` can extend them). Returns
+    ``(elapsed_seconds, shards_gained)`` for display in the welcome-back
+    banner — elapsed is the *true* wall-clock gap so the banner can speak
+    honestly about how long the player was away, while ``shards_gained``
+    already reflects the cap + efficiency scaling.
     """
     if state.last_saved_at <= 0:
         return 0.0, 0.0
@@ -84,11 +86,11 @@ def apply_offline_earnings(
     if elapsed <= 0:
         return 0.0, 0.0
 
-    effective = min(elapsed, OFFLINE_CAP_SECONDS) * OFFLINE_EFFICIENCY
+    cap = state.offline_cap_seconds()
+    efficiency = state.offline_efficiency()
+    effective = min(elapsed, cap) * efficiency
     gained = state.total_rate() * effective
     if gained > 0:
         state.shards += gained
         state.total_earned += gained
-    # Return the *real* elapsed time (uncapped) so the banner can mention it,
-    # but the shards reflect the capped/discounted amount actually credited.
     return elapsed, gained

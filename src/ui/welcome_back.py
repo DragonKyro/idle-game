@@ -11,10 +11,10 @@ from src.constants import (
     COLOR_TEXT_GOLD,
     COLOR_TEXT_PRIMARY,
     COLOR_TEXT_SECONDARY,
-    OFFLINE_CAP_SECONDS,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
+from src.game_state import DEFAULT_OFFLINE_CAP_SECONDS
 from src.number_format import format_duration, format_number
 from src.ui.button import Button
 
@@ -45,7 +45,7 @@ class WelcomeBackModal:
             height=46,
         )
 
-        cap_hit = elapsed_seconds > OFFLINE_CAP_SECONDS
+        cap_hit = elapsed_seconds > DEFAULT_OFFLINE_CAP_SECONDS
         subline = (
             "Your helpers mined away (capped at 8 hours):"
             if cap_hit

@@ -5,17 +5,54 @@ Python + Arcade 3.x idle/clicker game.
 
 ## What this project is
 
-A complete idle game with a main clickable (giant mana crystal), a tier
-ladder of auto-producers, 29 upgrades (each with its own max level),
-save/load, offline earnings, a prestige ("Descend Deeper") system, a
-permanent "crystal aura" of generator emblems + upgrade stars ringing
-the clicker, and a fully procedural art style (sprites generated with
-Pillow at startup).
+A complete idle game with a main clickable (giant mana crystal), 10
+tiers of auto-producers, 29 leveled upgrades, save/load, offline
+earnings, a prestige ("Descend Deeper") system, a permanent "crystal
+aura" around the clicker, a 4-branch talent tree spent from essence, 28
+achievements, procedurally synthesized chiptune SFX, 6 rotating biomes,
+a mini-boss (Cavern Lord), random events (Golden Shards + Lucky
+Critters), a combo-click multiplier, a settings modal, a stats modal,
+onboarding, screen-shake + value-tween juice. Sprites and sounds are
+both procedurally generated at startup — no binary assets in the repo.
 
 The theme is dwarven-fantasy cavern mining; generator names run from
 "Rusty Pickaxe" up to "Astral Collective". Replacing the theme would mean
 swapping the names, colors, and sprite renderers — the math underneath is
 theme-agnostic.
+
+### New invariants to know
+
+- **Audio is synthesized, not shipped.** `src/audio.py::AudioLibrary`
+  generates every WAV on first construction and caches them under
+  `assets/sounds/`. Delete the folder and they regenerate — safe.
+- **`arcade.Sound` requires a window.** `AudioLibrary.__init__` is
+  called from inside `GameView.__init__`, which itself is constructed
+  after `arcade.Window.__init__` — do NOT build the library at module
+  import time or you'll crash headless.
+- **Playback uses one entry point.** Always go through
+  `AudioLibrary.play(name, gain=...)` so volume/mute settings are
+  honored centrally.
+- **Pure-Python stays pure.** `audio.py`, `achievements.py`,
+  `talents.py`, `biomes.py`, `game_state.py`, and the core math modules
+  must not import `arcade`. Tests rely on this.
+- **Unlock checks run every frame.** `achievements.newly_unlocked(state)`
+  is cheap (< 30 O(1) predicates) and returns just the newly-met
+  achievements so you can notify without re-scanning the full set.
+- **Essence has two counters.** `state.essence` is spendable (drives
+  the passive +2%/unit and talent purchases). `state.total_essence_earned`
+  is the lifetime counter for achievements and the stats modal. Keep
+  both up to date on descend / boss-defeat.
+- **Boss state is session-only.** Don't persist `GameView._boss` —
+  bosses re-gate on `state.total_earned` crossing the next threshold in
+  `_BOSS_THRESHOLDS`, using `state.bosses_defeated` as the index.
+- **Biomes are derived, not stored.** `biome_for_prestige(prestige_count)`
+  is the single source of truth; `GameView` regenerates the background
+  texture and re-tints the ambient motes when the prestige count
+  changes.
+- **Settings live on the state.** `state.settings` is a plain dict with
+  a small fixed schema. `SettingsModal` writes into it via
+  `GameView._handle_settings_change`, which also re-applies them (audio
+  volumes, screen shake, reduced motion).
 
 ### Core systems in brief
 
@@ -55,7 +92,7 @@ theme-agnostic.
 ```bash
 pip install -r requirements.txt        # or `pip install -e .` (pyproject.toml)
 python crystal_cavern.py   # launch the game
-pytest                  # run unit tests (72 tests, all pure-Python)
+pytest                  # run unit tests (113 tests, all pure-Python)
 ```
 
 Point the save file elsewhere to avoid clobbering a real playthrough:
@@ -109,13 +146,27 @@ Dependency direction is one-way top-to-bottom. Core modules never import
 | [src/game_state.py](src/game_state.py) | Core state + all production/cost/unlock logic |
 | [src/save_system.py](src/save_system.py) | Atomic save/load + offline earnings calc |
 | [src/sprite_factory.py](src/sprite_factory.py) | Procedural sprite rendering (add a new `sprite_shape`) |
-| [src/ui/shop_panel.py](src/ui/shop_panel.py) | Shop list rendering, `Lv N/M` + MAX badge, purchase intents, row-flash state |
-| [src/ui/stats_panel.py](src/ui/stats_panel.py) | HUD wallet, rate, essence/prestige badge, owned roster |
-| [src/ui/toast.py](src/ui/toast.py) | Purchase-confirmation banner at the top of the play area |
+| [src/ui/shop_panel.py](src/ui/shop_panel.py) | Shop list, `Lv N/M` + MAX badge, purchase intents, row-flash state |
+| [src/ui/stats_panel.py](src/ui/stats_panel.py) | HUD wallet (tweened), rate, essence/prestige badge, owned roster |
+| [src/ui/toast.py](src/ui/toast.py) | Purchase / event banner at the top of the play area |
 | [src/ui/descend_modal.py](src/ui/descend_modal.py) | Prestige confirmation modal |
-| [src/entities/main_clicker.py](src/entities/main_clicker.py) | The big tappable crystal, its pulse, click/purchase anim, texture swap |
+| [src/ui/settings_modal.py](src/ui/settings_modal.py) | Volumes, toggles, export/import, reset |
+| [src/ui/stats_modal.py](src/ui/stats_modal.py) | Lifetime stats + achievement progress |
+| [src/ui/achievement_panel.py](src/ui/achievement_panel.py) | Full achievement catalog with lock state |
+| [src/ui/achievement_banner.py](src/ui/achievement_banner.py) | Slide-in banner on unlock |
+| [src/ui/talent_panel.py](src/ui/talent_panel.py) | Talent tree modal with branch columns |
+| [src/ui/onboarding.py](src/ui/onboarding.py) | First-run pointer overlay (3 stages) |
+| [src/ui/combo_meter.py](src/ui/combo_meter.py) | Rapid-click combo charge + decay + meter |
+| [src/ui/random_events.py](src/ui/random_events.py) | Golden Shard + Lucky Critter spawn, click, reward |
+| [src/ui/juice.py](src/ui/juice.py) | ScreenShake + TweenedValue (reduced-motion friendly) |
+| [src/entities/main_clicker.py](src/entities/main_clicker.py) | The big tappable crystal, pulse, click/purchase anim, texture swap |
 | [src/entities/crystal_aura.py](src/entities/crystal_aura.py) | Permanent generator emblems + upgrade stars ringing the crystal |
-| [src/game_view.py](src/game_view.py) | Top-level loop: input routing, update, draw, autosave, purchase feedback, prestige flow |
+| [src/entities/cavern_lord.py](src/entities/cavern_lord.py) | Mini-boss entity: spawn, HP, click-damage, death sequence |
+| [src/audio.py](src/audio.py) | Procedural WAV synth + AudioLibrary facade |
+| [src/achievements.py](src/achievements.py) | 28 achievement defs + per-frame unlock check |
+| [src/talents.py](src/talents.py) | Talent definitions across 4 branches |
+| [src/biomes.py](src/biomes.py) | Biome palette list + `biome_for_prestige` |
+| [src/game_view.py](src/game_view.py) | Top-level loop: routes input, drives every subsystem, handles purchase feedback + prestige + boss + events |
 
 ## Things to know before editing
 
@@ -183,6 +234,45 @@ Dependency direction is one-way top-to-bottom. Core modules never import
 7. The tests in `tests/test_upgrades.py` enforce that every generator
    has at least one upgrade and that every `effect` string is
    well-formed — pytest will tell you if you break those invariants.
+
+## Adding a new achievement
+
+1. Append an `AchievementDef` to `ACHIEVEMENTS` in
+   [src/achievements.py](src/achievements.py).
+2. The `predicate` is a plain callable `(GameState) -> bool`. Helpers
+   for common cases (`_owned`, `_clicks`, `_earned`, `_prestige`) are
+   right above the list.
+3. The `color` accent is used on both the unlock banner and the panel
+   row trophy circle.
+4. Unlocks are checked every frame by `newly_unlocked(state)`, which
+   mutates `state.achievements` so the check stays idempotent.
+
+## Adding a new talent
+
+1. Append a `TalentDef` to `TALENTS` in
+   [src/talents.py](src/talents.py), picking one of the four branches.
+2. The `effect` string is what `GameState._talent_value(effect)` sums
+   over — either reuse an existing effect (e.g. `"click"`, `"idle"`,
+   `"offline"`, `"offline_cap"`, `"crit_chance"`, `"start_bonus"`,
+   `"event_rate"`, `"essence_bonus"`, `"lowest_tier_boost"`) or add a
+   new one AND a call-site that consumes it.
+3. Costs scale as `base_cost * level`; max_level caps purchases.
+
+## Adding a new biome
+
+1. Append a `Biome` to `BIOMES` in [src/biomes.py](src/biomes.py).
+2. `biome_for_prestige` uses modulo so the cycle length is just
+   `len(BIOMES)`. Players who prestige past the list just see the
+   rotation repeat.
+
+## Adding a new sound
+
+1. Write a recipe function in [src/audio.py](src/audio.py) that returns
+   `list[float]` in `[-1, 1]` at `_SAMPLE_RATE`.
+2. Register it in `_SOUND_RECIPES` under a stable name.
+3. Call `self._audio.play("name")` from the game view at the event.
+4. Delete `assets/sounds/<name>.wav` if you change the recipe — it's
+   cached, and the file wins over the recipe.
 
 ## Tuning prestige
 

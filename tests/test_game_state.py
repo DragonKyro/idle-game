@@ -11,8 +11,9 @@ from src.upgrades import UPGRADES_BY_KEY
 
 def test_click_grants_one_shard_by_default():
     state = GameState()
-    gained = state.click()
+    gained, was_crit = state.click(crit_roll=1.0)  # no crit
     assert gained == 1
+    assert not was_crit
     assert state.shards == 1
     assert state.total_earned == 1
     assert state.total_clicks == 1

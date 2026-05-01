@@ -131,6 +131,43 @@ def test_spent_essence_reduces_passive_bonus():
     assert math.isclose(multiplier_after, 1.16)
 
 
+def test_boss_damage_talent_scales_damage_multiplier():
+    state = GameState(essence=100)
+    assert state.boss_damage_multiplier() == 1.0
+    talent = TALENTS_BY_KEY["boss_slayer"]  # +50%/lv
+    state.talent_levels[talent.key] = 1
+    assert math.isclose(state.boss_damage_multiplier(), 1.5)
+    state.talent_levels[talent.key] = 3
+    assert math.isclose(state.boss_damage_multiplier(), 2.5)
+
+
+def test_achievement_bonus_talent_scales_with_achievements():
+    state = GameState()
+    # No achievements -> no bonus even with talent owned.
+    state.talent_levels["cavern_historian"] = 5  # 5 * 0.005 = 2.5%/ach
+    base = state.click_power()
+    assert math.isclose(base, 1.0)
+    # Add fake achievements (the state's set is just strings; no lookup).
+    state.achievements.update({"a", "b", "c", "d"})  # 4 * 5 * 0.005 = 10%
+    assert math.isclose(state.click_power(), 1.0 * (1 + 0.005 * 5 * 4))
+
+
+def test_type_diversity_talent_scales_with_distinct_helpers():
+    from src.generators import GENERATORS
+    state = GameState()
+    state.talent_levels["runed_harmony"] = 5  # 5 * 0.01 = 5%/type
+    state.owned[GENERATORS[0].key] = 10
+    state.owned[GENERATORS[1].key] = 10
+    state.owned[GENERATORS[2].key] = 10
+    # 3 types * 5 levels * 0.01 = +15% all production.
+    expected_bonus = 1 + 5 * 0.01 * 3
+    # Pick a tier with known base_production to verify.
+    assert math.isclose(
+        state.generator_rate(GENERATORS[0]),
+        GENERATORS[0].base_production * expected_bonus,
+    )
+
+
 def test_talent_state_round_trips_through_save():
     state = GameState(essence=5)
     state.talent_levels["tap_precision"] = 3

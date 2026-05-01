@@ -219,16 +219,25 @@ class GameView(arcade.View):
         )
 
         # Crystal tier label — shown just beneath the "Tap to mine" prompt
-        # so the player can tell *which* tier they're on and see the
-        # appearance change isn't random.
+        # so the player can tell *which* tier they're on, what bonus it
+        # grants, and how to unlock the next one.
         from src.entities.main_clicker import (
             CRYSTAL_BASE_SIZE, CRYSTAL_CENTER_X, CRYSTAL_CENTER_Y,
         )
         self._tier_text = arcade.Text(
             "", CRYSTAL_CENTER_X,
-            CRYSTAL_CENTER_Y - CRYSTAL_BASE_SIZE / 2 - 64,
+            CRYSTAL_CENTER_Y - CRYSTAL_BASE_SIZE / 2 - 58,
             COLOR_TEXT_GOLD,
             font_size=12, anchor_x="center", anchor_y="center", bold=True,
+        )
+        # Sub-label explains HOW to unlock the next tier (upgrade levels
+        # or descents). Lives just below the main tier text so the layout
+        # reads as a two-line badge.
+        self._tier_sub = arcade.Text(
+            "", CRYSTAL_CENTER_X,
+            CRYSTAL_CENTER_Y - CRYSTAL_BASE_SIZE / 2 - 76,
+            COLOR_TEXT_SECONDARY,
+            font_size=11, anchor_x="center", anchor_y="center", italic=True,
         )
 
         # Top-right iconic buttons for quick access to the meta panels.
@@ -618,10 +627,14 @@ class GameView(arcade.View):
         # Clicks deal 50x click power against bosses — an order of magnitude
         # punchier than the previous 5x so hitting "Click the boss!" feels
         # like swinging a hammer rather than poking it. The combo
-        # multiplier still applies on top, rewarding rapid clicking.
+        # multiplier still applies on top, rewarding rapid clicking, and
+        # the Boss Slayer talent adds a further multiplier.
         damage = max(
             1.0,
-            self.state.click_power() * self._combo.bonus_multiplier * 50,
+            self.state.click_power()
+            * self._combo.bonus_multiplier
+            * 50
+            * self.state.boss_damage_multiplier(),
         )
         self._combo.register_click()
         killed = self._boss.take_hit(damage, click_x=x, click_y=y)
@@ -741,22 +754,31 @@ class GameView(arcade.View):
         # non-overlapping slot.
         if self._boss is not None:
             self._boss.draw()
-        # Tier label sits just under the crystal's "Tap to mine" prompt
-        # so the player can read what tier the crystal is on and anticipate
-        # the next appearance change.
+        # Tier label + how-to-unlock sub. Two lines so we can say *what*
+        # the current tier gives and *how* to advance to the next.
         levels = self.state.total_upgrade_levels()
         from src.game_state import CRYSTAL_LEVELS_PER_TIER, CRYSTAL_MAX_TIER
         tier = self._current_tier
         tier_name = CRYSTAL_TIER_NAMES[tier] if tier < len(CRYSTAL_TIER_NAMES) else ""
+        bonus_pct = int(round((self.state.crystal_tier_bonus() - 1.0) * 100))
+        self._tier_text.text = (
+            f"Crystal: {tier_name}  —  +{bonus_pct}% all production"
+        )
         if tier < CRYSTAL_MAX_TIER:
             progress_into = levels % CRYSTAL_LEVELS_PER_TIER
-            self._tier_text.text = (
-                f"Crystal: {tier_name}  ({progress_into}/{CRYSTAL_LEVELS_PER_TIER} "
-                f"to next)"
+            remaining = CRYSTAL_LEVELS_PER_TIER - progress_into
+            next_name = (
+                CRYSTAL_TIER_NAMES[tier + 1]
+                if tier + 1 < len(CRYSTAL_TIER_NAMES) else ""
+            )
+            self._tier_sub.text = (
+                f"Next: {next_name} in {remaining} upgrade level(s) — "
+                "or on next descent"
             )
         else:
-            self._tier_text.text = f"Crystal: {tier_name}  (max tier)"
+            self._tier_sub.text = "All tiers unlocked"
         self._tier_text.draw()
+        self._tier_sub.draw()
         self._particles.draw()
         self._floating.draw()
         self._combo.draw()

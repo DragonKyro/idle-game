@@ -62,3 +62,21 @@ def test_generators_by_key_is_complete():
     assert len(GENERATORS_BY_KEY) == len(GENERATORS)
     for gen in GENERATORS:
         assert GENERATORS_BY_KEY[gen.key] is gen
+
+
+def test_generator_count_matches_expansion_target():
+    # Expansion brings the catalog to 20. Guard against accidental drops.
+    assert len(GENERATORS) >= 20
+
+
+def test_every_generator_has_a_registered_sprite():
+    from src.sprite_factory import _SHAPE_RENDERERS
+    for gen in GENERATORS:
+        assert gen.sprite_shape in _SHAPE_RENDERERS, (
+            f"{gen.key} references unknown sprite shape {gen.sprite_shape}"
+        )
+
+
+def test_generator_keys_unique():
+    keys = [g.key for g in GENERATORS]
+    assert len(keys) == len(set(keys))

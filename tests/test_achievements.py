@@ -67,3 +67,37 @@ def test_all_maxed_achievement_requires_every_upgrade():
     state.upgrade_levels = {u.key: u.max_level for u in UPGRADES}
     unlocked = {a.key for a in newly_unlocked(state)}
     assert "all_maxed" in unlocked
+
+
+def test_achievement_catalog_expanded():
+    # Guard against accidental drop below the expansion target.
+    assert len(ACHIEVEMENTS) >= 48
+
+
+def test_branch_maxed_achievement_triggers_per_branch():
+    from src.talents import TALENTS, TALENT_BRANCHES
+    state = GameState()
+    # Max every talent in a single branch.
+    branch = TALENT_BRANCHES[0]
+    for t in TALENTS:
+        if t.branch == branch:
+            state.talent_levels[t.key] = t.max_level
+    unlocked = {a.key for a in newly_unlocked(state)}
+    assert "talent_branch" in unlocked
+
+
+def test_all_generators_maxed_achievement():
+    from src.generators import GENERATORS
+    state = GameState()
+    # Fill every generator to its max_count.
+    for g in GENERATORS:
+        state.owned[g.key] = g.max_count
+    unlocked = {a.key for a in newly_unlocked(state)}
+    assert "max_all_gens" in unlocked
+
+
+def test_playtime_achievements_track_seconds():
+    state = GameState(playtime_seconds=3600)
+    unlocked = {a.key for a in newly_unlocked(state)}
+    assert "playtime_1h" in unlocked
+    assert "playtime_10h" not in unlocked

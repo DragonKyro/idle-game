@@ -59,6 +59,7 @@ class StatsModal:
             "total_earned",
             "helpers_bought",
             "upgrade_levels",
+            "crystal",
             "descents",
             "best_descent",
             "total_essence",
@@ -117,12 +118,20 @@ class StatsModal:
         row_top = self._bottom + _PANEL_H - 90
 
         unlocked = sum(1 for a in ACHIEVEMENTS if a.key in state.achievements)
+        from src.sprite_factory import CRYSTAL_TIER_NAMES
+        tier_idx = state.crystal_tier()
+        tier_name = (
+            CRYSTAL_TIER_NAMES[tier_idx]
+            if tier_idx < len(CRYSTAL_TIER_NAMES) else str(tier_idx)
+        )
+        crystal_bonus_pct = int(round((state.crystal_tier_bonus() - 1.0) * 100))
         data = {
             "playtime":       ("Playtime",           format_duration(state.playtime_seconds)),
             "total_clicks":   ("Total clicks",       format_number(state.total_clicks)),
             "total_earned":   ("Total earned",       format_number(state.total_earned)),
             "helpers_bought": ("Helpers bought",     format_number(state.total_generators_bought)),
             "upgrade_levels": ("Upgrade levels",     str(state.total_upgrade_levels())),
+            "crystal":        ("Crystal tier",       f"{tier_name} (+{crystal_bonus_pct}%)"),
             "descents":       ("Descents",           str(state.prestige_count)),
             "best_descent":   ("Best descent",       f"{state.best_descent_essence} essence"),
             "total_essence":  ("Lifetime essence",   str(state.total_essence_earned)),

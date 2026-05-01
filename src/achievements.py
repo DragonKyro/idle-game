@@ -79,6 +79,82 @@ def _all_max_upgrades():
     return check
 
 
+def _all_click_upgrades_maxed():
+    from src.upgrades import UPGRADES
+
+    def check(s: "GameState") -> bool:
+        click_keys = [u.key for u in UPGRADES if u.effect == "click"]
+        return all(s.upgrade_is_maxed(k) for k in click_keys) if click_keys else False
+
+    return check
+
+
+def _all_global_upgrades_maxed():
+    from src.upgrades import UPGRADES
+
+    def check(s: "GameState") -> bool:
+        g_keys = [u.key for u in UPGRADES if u.effect == "global"]
+        return all(s.upgrade_is_maxed(k) for k in g_keys) if g_keys else False
+
+    return check
+
+
+def _any_talent_owned():
+    return lambda s: any(v > 0 for v in s.talent_levels.values())
+
+
+def _all_talents_maxed():
+    from src.talents import TALENTS
+
+    def check(s: "GameState") -> bool:
+        return all(s.talent_is_maxed(t.key) for t in TALENTS)
+
+    return check
+
+
+def _branch_maxed():
+    from src.talents import TALENT_BRANCHES, TALENTS
+
+    def check(s: "GameState") -> bool:
+        for branch in TALENT_BRANCHES:
+            branch_talents = [t for t in TALENTS if t.branch == branch]
+            if branch_talents and all(s.talent_is_maxed(t.key) for t in branch_talents):
+                return True
+        return False
+
+    return check
+
+
+def _playtime(seconds: float):
+    return lambda s: s.playtime_seconds >= seconds
+
+
+def _bosses(n: int):
+    return lambda s: s.bosses_defeated >= n
+
+
+def _generator_maxed(key: str):
+    """Fires when the player has 200 (the configured max) of `key`."""
+    from src.generators import GENERATORS_BY_KEY
+
+    def check(s: "GameState") -> bool:
+        gen = GENERATORS_BY_KEY.get(key)
+        if gen is None:
+            return False
+        return s.owned.get(key, 0) >= gen.max_count
+
+    return check
+
+
+def _all_generators_maxed():
+    from src.generators import GENERATORS
+
+    def check(s: "GameState") -> bool:
+        return all(s.owned.get(g.key, 0) >= g.max_count for g in GENERATORS)
+
+    return check
+
+
 # Palette shortcuts so the unlock banners read as a coherent set.
 _GOLD = (255, 214, 110)
 _GREEN = (130, 230, 170)
@@ -173,6 +249,86 @@ ACHIEVEMENTS: Sequence[AchievementDef] = (
     AchievementDef("essence_1000",   "Essence Ascendant",
                    "Earn 1,000 lifetime Ancient Essence.",
                    _GOLD, _essence(1_000)),
+
+    # --- Extended clicks ---
+    AchievementDef("clicks_100k",  "Tendon Specialist",
+                   "Tap the crystal 100,000 times.",
+                   _CYAN, _clicks(100_000)),
+    AchievementDef("clicks_1m",    "Million-Tap Club",
+                   "Tap the crystal 1,000,000 times.",
+                   _CYAN, _clicks(1_000_000)),
+
+    # --- Extended earnings ---
+    AchievementDef("earned_1qi",  "Quintillionaire",
+                   "Earn 1 quintillion shards total.",
+                   _GOLD, _earned(1e18)),
+    AchievementDef("earned_1sx",  "Sextillionaire",
+                   "Earn 1 sextillion shards total.",
+                   _GOLD, _earned(1e21)),
+
+    # --- New generators ---
+    AchievementDef("own_lantern",   "Light the Way",
+                   "Hire your first Lantern Keeper.",
+                   _GOLD, _owned("lantern_keeper", 1)),
+    AchievementDef("own_whale",     "Leviathan",
+                   "Summon your first Void Whale.",
+                   _CYAN, _owned("void_whale", 1)),
+    AchievementDef("own_tree",      "World-Rooted",
+                   "Plant the first Universe Tree.",
+                   _GREEN, _owned("universe_tree", 1)),
+
+    # --- Helper completionism ---
+    AchievementDef("max_first_gen",  "Pickaxe Plenty",
+                   "Own the maximum 200 of Rusty Pickaxe.",
+                   _GREEN, _generator_maxed("rusty_pickaxe")),
+    AchievementDef("max_all_gens",   "Full Ledger",
+                   "Own the maximum 200 of every helper tier.",
+                   _ROSE, _all_generators_maxed()),
+
+    # --- Upgrades ---
+    AchievementDef("all_clicks_max", "Hands of Thunder",
+                   "Max out every click upgrade in the catalog.",
+                   _GOLD, _all_click_upgrades_maxed()),
+    AchievementDef("all_globals_max","Tuned to the Cavern",
+                   "Max out every global-production upgrade.",
+                   _ROSE, _all_global_upgrades_maxed()),
+
+    # --- Prestige ---
+    AchievementDef("descents_50",    "Cavern Scholar",
+                   "Descend 50 times.", _VIOLET, _prestige(50)),
+
+    # --- Talents ---
+    AchievementDef("talent_any",     "Student of the Cavern",
+                   "Invest essence in any talent.",
+                   _GOLD, _any_talent_owned()),
+    AchievementDef("talent_branch",  "Branch Master",
+                   "Max every talent in a single branch.",
+                   _VIOLET, _branch_maxed()),
+    AchievementDef("talent_all",     "Omnischolar",
+                   "Max every talent in every branch.",
+                   _ROSE, _all_talents_maxed()),
+
+    # --- Bosses ---
+    AchievementDef("boss_1",  "Lord Breaker",
+                   "Defeat your first Cavern Lord.",
+                   _ROSE, _bosses(1)),
+    AchievementDef("boss_10", "Tyrant of the Deep",
+                   "Defeat 10 Cavern Lords.", _ROSE, _bosses(10)),
+    AchievementDef("boss_50", "The Quiet After",
+                   "Defeat 50 Cavern Lords.", _ROSE, _bosses(50)),
+
+    # --- Playtime ---
+    AchievementDef("playtime_1h",   "Shift Done",
+                   "Play for 1 hour total.", _CYAN, _playtime(3600)),
+    AchievementDef("playtime_10h",  "Dedicated Dweller",
+                   "Play for 10 hours total.", _CYAN, _playtime(36_000)),
+    AchievementDef("playtime_100h", "Lives in the Cavern Now",
+                   "Play for 100 hours total.", _CYAN, _playtime(360_000)),
+
+    # --- Biome milestone (prestige-gated, post-cycle) ---
+    AchievementDef("biome_cosmic", "Across the Cycle",
+                   "Descend enough times to cycle every biome.",
+                   _VIOLET, _prestige(6)),
 )
 
 

@@ -44,6 +44,15 @@ TALENTS: Sequence[TalentDef] = (
               "per level. Lets idle investments pay off at the crystal.",
               base_cost=4, max_level=5, effect="rate_to_click", value=0.02,
               icon="wave"),
+    TalentDef("finishing_blow", "Finishing Blow", "click",
+              "+25% click power per level. A late-game capstone "
+              "when the basic click talents start to feel small.",
+              base_cost=6, max_level=3, effect="click", value=0.25,
+              icon="fist"),
+    TalentDef("second_wind", "Second Wind", "click",
+              "+3% crit chance per level, stacking with Critical Study.",
+              base_cost=5, max_level=3, effect="crit_chance", value=0.03,
+              icon="crosshair"),
 
     # --- Idle branch ---
     TalentDef("deeper_veins", "Deeper Veins", "idle",
@@ -53,6 +62,16 @@ TALENTS: Sequence[TalentDef] = (
     TalentDef("cavern_whisper", "Cavern Whisper", "idle",
               "+20% production from your lowest-tier helper per level.",
               base_cost=4, max_level=3, effect="lowest_tier_boost", value=0.20,
+              icon="wave"),
+    TalentDef("cavern_memory", "Cavern Memory", "idle",
+              "+15% passive production per level. A deeper cut of the "
+              "same vein — stacks with Deeper Veins.",
+              base_cost=5, max_level=3, effect="idle", value=0.15,
+              icon="vein"),
+    TalentDef("runed_harmony", "Runed Harmony", "idle",
+              "+1% all production per level for every distinct helper "
+              "type you currently own.",
+              base_cost=3, max_level=5, effect="type_diversity", value=0.01,
               icon="wave"),
 
     # --- Offline branch ---
@@ -79,6 +98,15 @@ TALENTS: Sequence[TalentDef] = (
               "+5% essence earned on descent per level.",
               base_cost=5, max_level=5, effect="essence_bonus", value=0.05,
               icon="magnet"),
+    TalentDef("boss_slayer", "Boss Slayer", "special",
+              "+50% click damage against Cavern Lords per level.",
+              base_cost=5, max_level=3, effect="boss_damage", value=0.50,
+              icon="crosshair"),
+    TalentDef("cavern_historian", "Cavern Historian", "special",
+              "+0.5% all production per level for every achievement "
+              "you've unlocked. Becomes significant as your record grows.",
+              base_cost=4, max_level=5, effect="achievement_bonus", value=0.005,
+              icon="coins"),
 )
 
 

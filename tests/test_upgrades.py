@@ -60,3 +60,21 @@ def test_at_least_three_global_upgrades():
 
 def test_upgrades_by_key_is_complete():
     assert len(UPGRADES_BY_KEY) == len(UPGRADES)
+
+
+def test_upgrade_count_reflects_expansion():
+    # After the expansion we expect at least 50 entries in the catalog.
+    assert len(UPGRADES) >= 50
+
+
+def test_every_generator_has_two_dedicated_upgrades():
+    """Each generator should have two ``gen:<key>`` upgrades: one gated
+    at 10 owned and one at 25 owned. Guard against adding a new tier
+    without its matching upgrades."""
+    from collections import Counter
+    per_gen = Counter()
+    for up in UPGRADES:
+        if up.effect.startswith("gen:"):
+            per_gen[up.effect.split(":", 1)[1]] += 1
+    missing = [g for g in GENERATORS_BY_KEY if per_gen[g] < 2]
+    assert not missing, f"Generators without 2 upgrades: {missing}"

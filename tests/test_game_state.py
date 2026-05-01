@@ -97,7 +97,14 @@ def test_upgrade_effect_stacks_multiplicatively_per_level():
     for _ in range(3):
         assert state.buy_upgrade(upgrade.key)
     assert state.upgrade_level(upgrade.key) == 3
-    assert math.isclose(state.click_power(), base * (upgrade.multiplier ** 3))
+    # Three upgrade levels also advance the crystal one tier (3 levels /
+    # CRYSTAL_LEVELS_PER_TIER=3 = +1 tier), so the expected value has to
+    # account for that bonus on top of the 2^3 stacking.
+    tier_bonus = state.crystal_tier_bonus()
+    assert math.isclose(
+        state.click_power(),
+        base * (upgrade.multiplier ** 3) * tier_bonus,
+    )
 
 
 def test_upgrade_cost_scales_by_cost_growth_per_level():
@@ -259,6 +266,32 @@ def test_prestige_state_round_trips_through_save():
     assert restored.essence == 5
     assert restored.prestige_count == 2
     assert restored.last_descend_total == 1e11
+
+
+def test_crystal_tier_bonus_matches_tier_times_bonus_rate():
+    from src.game_state import CRYSTAL_TIER_BONUS_PER
+    state = GameState()
+    assert math.isclose(state.crystal_tier_bonus(), 1.0)
+    state.upgrade_levels = {f"u{i}": 1 for i in range(3)}  # 3 levels = tier 1
+    assert math.isclose(state.crystal_tier_bonus(), 1.0 + CRYSTAL_TIER_BONUS_PER)
+    state.prestige_count = 2  # +2 tiers -> tier 3 total
+    assert math.isclose(state.crystal_tier_bonus(), 1.0 + 3 * CRYSTAL_TIER_BONUS_PER)
+
+
+def test_crystal_tier_bonus_applies_to_click_and_idle():
+    from src.game_state import CRYSTAL_TIER_BONUS_PER
+    state = GameState()
+    gen = GENERATORS[0]
+    state.owned[gen.key] = 10
+    base_click = state.click_power()
+    base_rate = state.generator_rate(gen)
+
+    # Force one tier by giving 3 upgrade levels on an unknown key; the
+    # tier formula only cares about total_upgrade_levels.
+    state.upgrade_levels = {"_phantom_a": 1, "_phantom_b": 1, "_phantom_c": 1}
+    expected_mult = 1.0 + CRYSTAL_TIER_BONUS_PER
+    assert math.isclose(state.click_power(), base_click * expected_mult)
+    assert math.isclose(state.generator_rate(gen), base_rate * expected_mult)
 
 
 def test_crystal_tier_grows_with_total_levels_and_prestige():

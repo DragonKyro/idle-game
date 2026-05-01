@@ -28,6 +28,11 @@ CRYSTAL_LEVELS_PER_TIER = 3
 DEFAULT_OFFLINE_EFFICIENCY = 0.5
 DEFAULT_OFFLINE_CAP_SECONDS = 8 * 60 * 60
 
+# Additive production bonus per crystal tier. At tier 0 (Cavern) the
+# bonus is 0%; at tier 6 (Cosmic) it's +90%. Multiplicative on the
+# global multiplier so it stacks with essence + global upgrades.
+CRYSTAL_TIER_BONUS_PER = 0.15
+
 # Onboarding stages.
 ONBOARDING_UNSEEN = 0
 ONBOARDING_POST_CLICK = 1
@@ -220,7 +225,26 @@ class GameState:
             upgrade = UPGRADES_BY_KEY.get(key)
             if upgrade and upgrade.effect == "global" and level > 0:
                 mult *= upgrade.multiplier ** level
+        mult *= self.crystal_tier_bonus()
+        # Cavern Historian: +0.5% per achievement per level.
+        ach_bonus = self._talent_value("achievement_bonus") * len(self.achievements)
+        if ach_bonus > 0:
+            mult *= 1.0 + ach_bonus
+        # Runed Harmony: +1% per distinct helper type per level.
+        type_count = sum(1 for v in self.owned.values() if v > 0)
+        type_bonus = self._talent_value("type_diversity") * type_count
+        if type_bonus > 0:
+            mult *= 1.0 + type_bonus
         return mult
+
+    def boss_damage_multiplier(self) -> float:
+        """Multiplier on click damage dealt to Cavern Lords, from the
+        Boss Slayer talent. 1.0 when the talent isn't owned."""
+        return 1.0 + self._talent_value("boss_damage")
+
+    def crystal_tier_bonus(self) -> float:
+        """Production multiplier granted by the current crystal tier."""
+        return 1.0 + CRYSTAL_TIER_BONUS_PER * self.crystal_tier()
 
     def crystal_tier(self) -> int:
         tier = self.total_upgrade_levels() // CRYSTAL_LEVELS_PER_TIER

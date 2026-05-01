@@ -54,7 +54,17 @@ theme-agnostic.
   cap. Shop rows mirror the upgrade `MAX` badge when they hit it.
 - **Clicks against bosses use a 50× multiplier.** If you tune this,
   do it in `GameView._damage_boss`, not in `click_power` — the crystal's
-  own click path shouldn't change.
+  own click path shouldn't change. The Boss Slayer talent also applies
+  via `state.boss_damage_multiplier()`.
+- **Shop row rendering puts tabs on top of rows.** The draw order is
+  panel bg → rows → opaque clip overlays (top/bottom) → header → tabs
+  → scrollbar. When adding new shop UI, respect that order or your
+  widget will get painted over.
+- **Three newer talent effects live in `_global_multiplier`.**
+  `achievement_bonus` and `type_diversity` are folded in alongside
+  `global` upgrades and the crystal tier bonus. If you add more, put
+  them there too — one place for the "everything multiplier" keeps the
+  math auditable.
 - **Biomes are derived, not stored.** `biome_for_prestige(prestige_count)`
   is the single source of truth; `GameView` regenerates the background
   texture and re-tints the ambient motes when the prestige count
@@ -66,7 +76,10 @@ theme-agnostic.
 
 ### Core systems in brief
 
-- **Generators** (`src/generators.py`): 10 tiers, geometric cost growth.
+- **Generators** (`src/generators.py`): 20 tiers, geometric cost
+  growth, ordered by `base_cost`. New tiers slot in between existing
+  ones; saves keep every original key so nothing breaks when the
+  catalog expands.
 - **Upgrades** (`src/upgrades.py`): 29 entries, three effect kinds —
   `"click"`, `"gen:<key>"`, `"global"`. Each has `max_level` (3 or 5)
   and `cost_growth` (typically 4–6). Effect stacks multiplicatively per
@@ -102,7 +115,7 @@ theme-agnostic.
 ```bash
 pip install -r requirements.txt        # or `pip install -e .` (pyproject.toml)
 python crystal_cavern.py   # launch the game
-pytest                  # run unit tests (120 tests, all pure-Python)
+pytest                  # run unit tests (134 tests, all pure-Python)
 ```
 
 Point the save file elsewhere to avoid clobbering a real playthrough:
@@ -205,6 +218,12 @@ Dependency direction is one-way top-to-bottom. Core modules never import
 - **Crystal textures are pre-generated** for every tier at launch
   (`GameView._crystal_textures`). Don't re-generate them at runtime;
   swap references on `MainClicker` via `set_texture`.
+- **Crystal tier grants an additive production bonus.** The tier
+  multiplier (`GameState.crystal_tier_bonus` = `1 + CRYSTAL_TIER_BONUS_PER
+  * tier`, default 15% per tier) is folded into `_global_multiplier`,
+  so every click and idle tick already reflects it. If you change the
+  curve, update the HUD tier label's `+N%` text in `game_view.py` so
+  the player's math matches reality.
 - **Purchase feedback has one entry point.** Any new purchase path
   should call `GameView._on_purchase_feedback(...)` so row flash, toast,
   particle burst, and crystal pulse all stay in sync.

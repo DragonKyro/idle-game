@@ -84,6 +84,12 @@ class DescendModal:
             cx, bottom + _MODAL_H - 180, COLOR_TEXT_DIM, font_size=12,
             anchor_x="center", anchor_y="center",
         )
+        # Secondary perk reminder — descending also advances the crystal.
+        self._tier_note = arcade.Text(
+            "Your crystal also advances one tier — +15% all production.",
+            cx, bottom + _MODAL_H - 206, COLOR_TEXT_GOLD, font_size=11,
+            anchor_x="center", anchor_y="center", italic=True,
+        )
         self._confirm_label = arcade.Text(
             "Descend", self._confirm.center_x, self._confirm.center_y,
             COLOR_TEXT_PRIMARY, font_size=18,
@@ -138,6 +144,7 @@ class DescendModal:
         self._body2.draw()
         self._reward_headline.draw()
         self._reward_detail.draw()
+        self._tier_note.draw()
 
         hovered_confirm = self._confirm.contains(self._mouse_x, self._mouse_y)
         hovered_cancel = self._cancel.contains(self._mouse_x, self._mouse_y)

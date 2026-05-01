@@ -12,28 +12,39 @@ permanent Ancient Essence and an ever-evolving crystal.
 
 ## Features
 
-- **10 tiers of generators** with geometric cost scaling, a **cap of 200
-  per tier** (so completionists have a clear finish line), and
-  procedurally rendered pixel-art sprites.
-- **31 upgrades, each with its own max level** — buy each upgrade 3–5
-  times for multiplicative effect stacking. Six of them are click-power
-  tiers (Gloves → Gauntlet → Echo Tap → Mithril Knuckles → Resonant
-  Strike → Divine Striker). Rows show `Lv N/M` and the next-level cost;
-  maxed rows stay visible with a gold `MAX` badge so completionists can
-  see the full catalog of remaining work.
+- **20 tiers of generators** with geometric cost scaling, a **cap of
+  200 per tier** (so completionists have a clear finish line), and
+  procedurally rendered pixel-art sprites. The ladder now runs from
+  Rusty Pickaxe through Lantern Keeper, Apprentice Miner, Deep
+  Digger, Cart Runner, Moonstone Mine, Crystal Drill, Clockwork
+  Sapper, Stone Golem, Celestial Chorus, Arcane Wizard, Rift Anchor,
+  Rune Forge, Crystal Dragon, Void Whale, Ancient Titan, Cosmic
+  Weaver, Astral Collective, Primordial Hearth, and Universe Tree.
+- **53 upgrades, each with its own max level** — two per generator
+  (gated at 10 and 25 owned) plus six click-power tiers (Gloves →
+  Gauntlet → Echo Tap → Mithril Knuckles → Resonant Strike → Divine
+  Striker) and seven global-production capstones. Rows show `Lv N/M`
+  and the next-level cost; maxed rows stay visible with a gold `MAX`
+  badge. The emporium now has a visible **scrollbar**, rows scroll
+  **behind** the tabs, and scroll is clamped to content height so you
+  can't rubber-band past the end.
 - **Prestige / Descent system** — reset the current run to earn permanent
   *Ancient Essence*. Unspent essence grants +2% all production (compounds);
   spent essence unlocks talents on the tree.
-- **Talent tree** — four branches (Click, Idle, Offline, Special)
-  rendered as a proper tree of circular nodes connected by trunk lines,
-  each with a procedurally drawn icon and level pips. Click branch
-  includes **Synced Strike**, which adds a slice of your per-second
-  rate to every click (so idle investment pays off at the crystal too).
-  Hover any node for a tooltip showing the full description, current
-  level, and cost of the next level; click to invest one essence.
-- **Achievements** — 28 trackable badges across clicks, earnings, roster,
-  upgrades, and prestige. An animated banner slides in on each unlock;
-  a full panel (keybind `A`) shows the whole catalog.
+- **Talent tree with 16 talents across 4 branches** (Click, Idle,
+  Offline, Special) rendered as a proper tree of circular nodes
+  connected by trunk lines, each with a procedurally drawn icon and
+  level pips. Highlights: **Synced Strike** (click scales with /s
+  rate), **Boss Slayer** (extra boss damage per level), **Runed
+  Harmony** (all production scales with distinct helper types owned),
+  **Cavern Historian** (all production scales with achievements
+  unlocked). Hover any node for a tooltip; click to invest.
+- **Achievements** — **50 trackable badges** across clicks, earnings,
+  roster, upgrades (incl. "max every click upgrade" / "max every
+  global upgrade"), prestige, talents (per-branch max + full max),
+  bosses (1/10/50 slain), playtime (1h/10h/100h), and a biome-cycle
+  milestone. An animated banner slides in on each unlock; a full panel
+  (keybind `A`) shows the whole catalog.
 - **Procedurally synthesized chiptune audio** — all 8 sound effects
   (click, purchase, level-up, max-level flourish, descend fanfare, event
   chime, boss hit, boss defeat) *plus* a 20-second looping cave-ambient
@@ -41,12 +52,14 @@ permanent Ancient Essence and an ever-evolving crystal.
   sine/triangle/square waves with ADSR envelopes at first launch, then
   cached to `assets/sounds/`. No binary audio assets in the repo.
   Music and SFX volumes can be adjusted independently in Settings.
-- **Evolving main crystal** — seven procedurally rendered tiers (Cavern
-  → Verdant → Dusk → Golden → Rose → Prismatic → Cosmic). It levels up
-  as you buy upgrades (every 3 levels) and as you prestige. The
-  current tier name and progress to the next appear beneath the
-  crystal so the change never feels random, and a toast + level-up
-  chime celebrates each new tier.
+- **Evolving main crystal with real rewards** — seven procedurally
+  rendered tiers (Cavern → Verdant → Dusk → Golden → Rose → Prismatic
+  → Cosmic). **Each tier grants +15% to all production** (additive,
+  stacks with every other multiplier) — Cosmic alone is +90%. Advance
+  by buying 3 upgrade levels **or** descending, with both paths shown
+  in the tier label beneath the crystal (`Crystal: Verdant  —  +15%
+  all production` / `Next: Dusk in 2 upgrade level(s) — or on next
+  descent`). Tier-ups fire a toast + chime.
 - **Six biomes** that rotate with each descent — the whole play area
   re-themes itself (Cavern → Verdant Hollows → Dusk Grotto → Ember Deep
   → Abyssal Rift → Astral Expanse).
@@ -230,7 +243,7 @@ unit tests that don't need a graphics context:
 pytest
 ```
 
-Expected: `120 passed`.
+Expected: `134 passed`.
 
 ## Tuning
 

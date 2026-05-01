@@ -296,6 +296,232 @@ def _draw_astral(accent: tuple[int, int, int]) -> Image.Image:
     return _finalize(img)
 
 
+# ----------------------------------------------------------------------
+# New tier renderers. Each is a 32x32 pixel-art motif tinted by its
+# generator's accent colour. Purposely chunky so the upscale to 4x
+# reads as deliberate pixel art rather than blurry small sprites.
+# ----------------------------------------------------------------------
+
+
+def _draw_lantern(accent: tuple[int, int, int]) -> Image.Image:
+    img = _new_canvas()
+    d = ImageDraw.Draw(img)
+    # Lantern handle and cap.
+    d.rectangle((14, 3, 18, 5), fill=(60, 42, 30))
+    d.line([(13, 3), (19, 3)], fill=(60, 42, 30))
+    d.line([(13, 5), (13, 10)], fill=(60, 42, 30))
+    d.line([(19, 5), (19, 10)], fill=(60, 42, 30))
+    d.rectangle((12, 10, 20, 11), fill=_shade(accent, -0.3))
+    # Glass housing with a flame inside.
+    d.rectangle((13, 11, 19, 22), fill=accent)
+    d.rectangle((13, 11, 19, 12), fill=_shade(accent, 0.4))
+    d.polygon([(16, 13), (15, 17), (16, 19), (17, 17)], fill=(255, 240, 180))
+    d.polygon([(16, 15), (15, 18), (16, 19), (17, 18)], fill=(255, 200, 100))
+    d.rectangle((12, 22, 20, 24), fill=_shade(accent, -0.4))
+    # Carrier (tiny figure).
+    d.rectangle((10, 24, 22, 28), fill=(80, 60, 40))
+    d.rectangle((14, 22, 18, 25), fill=(230, 200, 160))  # head silhouette
+    return _finalize(img)
+
+
+def _draw_digger(accent: tuple[int, int, int]) -> Image.Image:
+    img = _new_canvas()
+    d = ImageDraw.Draw(img)
+    coat = accent
+    skin = (240, 200, 160)
+    # Stance wider than the apprentice: planted, heavier.
+    d.rectangle((8, 24, 14, 29), fill=(60, 42, 30))
+    d.rectangle((18, 24, 24, 29), fill=(60, 42, 30))
+    # Stout body.
+    d.rectangle((7, 14, 25, 25), fill=coat)
+    d.rectangle((7, 14, 25, 15), fill=_shade(coat, 0.3))
+    # Head + helmet with a headlamp.
+    d.rectangle((11, 7, 20, 14), fill=skin)
+    d.rectangle((10, 5, 21, 8), fill=_shade(coat, -0.4))
+    d.rectangle((14, 8, 17, 10), fill=(255, 240, 180))  # lamp
+    # Long shovel held diagonally.
+    d.line([(6, 30), (22, 6)], fill=(120, 90, 50), width=1)
+    d.polygon([(22, 4), (26, 6), (25, 9), (21, 7)], fill=(200, 200, 210))
+    return _finalize(img)
+
+
+def _draw_mine(accent: tuple[int, int, int]) -> Image.Image:
+    img = _new_canvas()
+    d = ImageDraw.Draw(img)
+    # Arched cave entrance with a glowing interior.
+    stone = (90, 78, 100)
+    d.rectangle((4, 24, 28, 30), fill=stone)
+    d.rectangle((4, 24, 28, 25), fill=_shade(stone, 0.3))
+    # Arch.
+    d.rectangle((8, 10, 24, 24), fill=_shade(stone, -0.2))
+    d.arc((5, 4, 27, 18), start=180, end=360, fill=stone, width=3)
+    # Inner glow.
+    d.rectangle((11, 14, 21, 23), fill=accent)
+    d.rectangle((12, 15, 20, 20), fill=_shade(accent, 0.4))
+    d.rectangle((14, 17, 18, 20), fill=(255, 255, 255))
+    # Timber supports.
+    d.rectangle((8, 12, 10, 24), fill=(110, 80, 50))
+    d.rectangle((22, 12, 24, 24), fill=(110, 80, 50))
+    return _finalize(img)
+
+
+def _draw_clockwork(accent: tuple[int, int, int]) -> Image.Image:
+    img = _new_canvas()
+    d = ImageDraw.Draw(img)
+    body = accent
+    # Big gear in the middle.
+    d.ellipse((8, 8, 24, 24), fill=body)
+    d.ellipse((12, 12, 20, 20), fill=_shade(body, -0.3))
+    d.ellipse((14, 14, 18, 18), fill=_shade(body, 0.4))
+    # Gear teeth.
+    for ang in range(0, 360, 45):
+        import math as _m
+        rad = _m.radians(ang)
+        x = int(16 + 10 * _m.cos(rad))
+        y = int(16 + 10 * _m.sin(rad))
+        d.rectangle((x - 1, y - 1, x + 1, y + 1), fill=_shade(body, -0.2))
+    # Little side-gear.
+    d.ellipse((22, 3, 30, 11), fill=_shade(body, -0.2))
+    d.ellipse((24, 5, 28, 9), fill=_shade(body, 0.3))
+    # Steam puff.
+    d.ellipse((2, 2, 6, 6), fill=(230, 230, 240))
+    d.ellipse((4, 4, 7, 7), fill=(200, 200, 220))
+    return _finalize(img)
+
+
+def _draw_chorus(accent: tuple[int, int, int]) -> Image.Image:
+    img = _new_canvas()
+    d = ImageDraw.Draw(img)
+    # Three hooded figures in a row.
+    for i, offset in enumerate((-8, 0, 8)):
+        cx = 16 + offset
+        # Robe.
+        d.polygon(
+            [(cx, 10), (cx + 4, 28), (cx - 4, 28)],
+            fill=_shade(accent, -0.1 * i),
+        )
+        # Hood / face.
+        d.ellipse((cx - 3, 7, cx + 3, 13), fill=_shade(accent, 0.2))
+        d.rectangle((cx - 2, 10, cx + 2, 13), fill=(60, 40, 80))
+        # Mouth hint for singing (tiny light dot).
+        d.point((cx, 12), fill=(255, 255, 255))
+    # Floating music notes above.
+    for nx, ny in ((6, 4), (14, 2), (22, 4)):
+        d.point((nx, ny), fill=(255, 255, 255))
+        d.point((nx + 1, ny + 1), fill=(255, 255, 255))
+    return _finalize(img)
+
+
+def _draw_rift(accent: tuple[int, int, int]) -> Image.Image:
+    img = _new_canvas()
+    d = ImageDraw.Draw(img)
+    # Jagged vertical tear in space.
+    pts_outer = [
+        (14, 2), (17, 4), (13, 8), (19, 12), (14, 16),
+        (20, 20), (13, 24), (18, 28), (14, 30),
+    ]
+    pts_inner = [
+        (16, 4), (14, 8), (18, 12), (15, 16),
+        (19, 20), (14, 24), (17, 28),
+    ]
+    d.line(pts_outer, fill=_shade(accent, -0.3), width=3)
+    d.line(pts_outer, fill=accent, width=2)
+    d.line(pts_inner, fill=(255, 255, 255), width=1)
+    # Frame of drifting particles.
+    for x, y in ((4, 10), (28, 18), (6, 22), (26, 8), (10, 4), (22, 28)):
+        d.point((x, y), fill=_shade(accent, 0.4))
+    return _finalize(img)
+
+
+def _draw_whale(accent: tuple[int, int, int]) -> Image.Image:
+    img = _new_canvas()
+    d = ImageDraw.Draw(img)
+    body = accent
+    # Broad oval body.
+    d.ellipse((3, 12, 25, 22), fill=body)
+    d.ellipse((3, 12, 25, 14), fill=_shade(body, 0.3))
+    d.ellipse((4, 20, 24, 22), fill=_shade(body, -0.2))
+    # Tail.
+    d.polygon([(25, 14), (30, 8), (30, 24), (25, 20)], fill=body)
+    # Eye.
+    d.ellipse((8, 15, 11, 18), fill=(240, 240, 255))
+    d.ellipse((9, 16, 10, 17), fill=(0, 0, 0))
+    # Spout — drifting star motes.
+    for dx, dy in ((10, 6), (12, 3), (14, 7), (11, 9)):
+        d.point((dx, dy), fill=(240, 240, 255))
+    # Fins.
+    d.polygon([(12, 21), (16, 21), (14, 25)], fill=_shade(body, -0.3))
+    return _finalize(img)
+
+
+def _draw_weaver(accent: tuple[int, int, int]) -> Image.Image:
+    img = _new_canvas()
+    d = ImageDraw.Draw(img)
+    # Loom frame.
+    d.rectangle((5, 4, 7, 28), fill=(90, 60, 120))
+    d.rectangle((25, 4, 27, 28), fill=(90, 60, 120))
+    d.rectangle((5, 4, 27, 6), fill=(90, 60, 120))
+    d.rectangle((5, 26, 27, 28), fill=(90, 60, 120))
+    # Threads (cosmic — angled + glowing).
+    for i in range(4):
+        y = 8 + i * 4
+        d.line([(7, y), (27, y + 1)], fill=accent, width=1)
+    # A gem being woven in the center.
+    d.polygon([(16, 14), (20, 18), (16, 22), (12, 18)],
+              fill=_shade(accent, 0.3))
+    d.polygon([(16, 15), (19, 18), (16, 21), (13, 18)],
+              fill=_shade(accent, 0.6))
+    d.point((16, 18), fill=(255, 255, 255))
+    return _finalize(img)
+
+
+def _draw_hearth(accent: tuple[int, int, int]) -> Image.Image:
+    img = _new_canvas()
+    d = ImageDraw.Draw(img)
+    stone = (80, 70, 90)
+    # Hearth base.
+    d.rectangle((4, 24, 28, 30), fill=stone)
+    d.rectangle((4, 24, 28, 25), fill=_shade(stone, 0.3))
+    d.rectangle((4, 29, 28, 30), fill=_shade(stone, -0.3))
+    # Fireplace arch.
+    d.rectangle((6, 14, 26, 26), fill=(30, 20, 40))
+    d.rectangle((6, 14, 26, 15), fill=stone)
+    # Flame stack — triple-layered.
+    d.polygon([(10, 24), (13, 14), (16, 18), (19, 14), (22, 24)],
+              fill=accent)
+    d.polygon([(12, 24), (14, 17), (16, 20), (18, 17), (20, 24)],
+              fill=_shade(accent, 0.4))
+    d.polygon([(14, 24), (15, 20), (16, 22), (17, 20), (18, 24)],
+              fill=(255, 240, 180))
+    # Rising sparks.
+    d.point((10, 10), fill=(255, 230, 160))
+    d.point((16, 6), fill=(255, 230, 160))
+    d.point((22, 10), fill=(255, 230, 160))
+    return _finalize(img)
+
+
+def _draw_tree(accent: tuple[int, int, int]) -> Image.Image:
+    img = _new_canvas()
+    d = ImageDraw.Draw(img)
+    trunk = (90, 70, 50)
+    # Trunk and roots.
+    d.rectangle((14, 16, 18, 28), fill=trunk)
+    d.polygon([(10, 28), (14, 22), (14, 28)], fill=trunk)
+    d.polygon([(18, 22), (18, 28), (22, 28)], fill=trunk)
+    # Canopy — layered leaves.
+    d.ellipse((6, 4, 26, 18), fill=_shade(accent, -0.2))
+    d.ellipse((8, 6, 24, 16), fill=accent)
+    d.ellipse((10, 8, 22, 14), fill=_shade(accent, 0.4))
+    # Dew-drop shards hanging from the leaves.
+    d.polygon([(8, 14), (9, 17), (10, 14)], fill=(255, 255, 255))
+    d.polygon([(16, 14), (17, 18), (18, 14)], fill=(255, 255, 255))
+    d.polygon([(22, 14), (23, 17), (24, 14)], fill=(255, 255, 255))
+    # Tiny stars in the canopy.
+    d.point((14, 8), fill=(255, 255, 240))
+    d.point((20, 10), fill=(255, 255, 240))
+    return _finalize(img)
+
+
 # Crystal tier palettes and names. Tier 0 is the starting crystal; higher
 # tiers are unlocked by purchased upgrades / prestige. Picked for clear
 # visual distinction at a glance.
@@ -404,6 +630,17 @@ _SHAPE_RENDERERS = {
     "dragon": _draw_dragon,
     "titan": _draw_titan,
     "astral": _draw_astral,
+    # Expansion generators.
+    "lantern": _draw_lantern,
+    "digger": _draw_digger,
+    "mine": _draw_mine,
+    "clockwork": _draw_clockwork,
+    "chorus": _draw_chorus,
+    "rift": _draw_rift,
+    "whale": _draw_whale,
+    "weaver": _draw_weaver,
+    "hearth": _draw_hearth,
+    "tree": _draw_tree,
 }
 
 

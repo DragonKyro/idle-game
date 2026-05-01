@@ -72,6 +72,16 @@ UPGRADES: Sequence[UpgradeDef] = (
                40_000, "rusty_pickaxe", 25, "gen:rusty_pickaxe", 2.5,
                max_level=3, cost_growth=5.0),
 
+    # ---------- Lantern Keeper ----------
+    UpgradeDef("lantern_fuel",   "Infinite Oil",
+               "The lantern never dims. Carriers never rest.",
+               1_200, "lantern_keeper", 10, "gen:lantern_keeper", 2.0,
+               max_level=5, cost_growth=4.0),
+    UpgradeDef("lantern_beam",   "Focused Beam",
+               "A thin blade of light that also cuts stone.",
+               60_000, "lantern_keeper", 25, "gen:lantern_keeper", 2.5,
+               max_level=3, cost_growth=5.0),
+
     # ---------- Apprentice Miner ----------
     UpgradeDef("miner_coffee",    "Strong Coffee",
                "Apprentices triple their swing rate.",
@@ -80,6 +90,16 @@ UPGRADES: Sequence[UpgradeDef] = (
     UpgradeDef("miner_certified", "Certified Guildfolk",
                "They read the safety manual now and everything.",
                200_000, "apprentice_miner", 25, "gen:apprentice_miner", 2.0,
+               max_level=3, cost_growth=5.0),
+
+    # ---------- Deep Digger ----------
+    UpgradeDef("digger_drills",  "Shaft Drills",
+               "Faster descent, fewer cave-ins.",
+               8_000, "deep_digger", 10, "gen:deep_digger", 2.0,
+               max_level=5, cost_growth=4.0),
+    UpgradeDef("digger_abyss",   "Abyss Licenses",
+               "Paperwork, but the kind that lets you go deeper.",
+               600_000, "deep_digger", 25, "gen:deep_digger", 2.5,
                max_level=3, cost_growth=5.0),
 
     # ---------- Cart Runner ----------
@@ -92,6 +112,16 @@ UPGRADES: Sequence[UpgradeDef] = (
                2_000_000, "cart_runner", 25, "gen:cart_runner", 2.5,
                max_level=3, cost_growth=5.0),
 
+    # ---------- Moonstone Mine ----------
+    UpgradeDef("mine_moonbloom", "Moonbloom Veins",
+               "Shards grow like flowers in the moonlit rock.",
+               60_000, "moonstone_mine", 10, "gen:moonstone_mine", 2.0,
+               max_level=5, cost_growth=4.0),
+    UpgradeDef("mine_phosphor",  "Phosphor Supports",
+               "The timber itself is luminous now. Safer, too.",
+               6_000_000, "moonstone_mine", 25, "gen:moonstone_mine", 2.5,
+               max_level=3, cost_growth=5.0),
+
     # ---------- Crystal Drill ----------
     UpgradeDef("drill_overclock", "Overclocked Drills",
                "Ignore manufacturer warnings — double speed.",
@@ -100,6 +130,16 @@ UPGRADES: Sequence[UpgradeDef] = (
     UpgradeDef("drill_tungsten",  "Tungsten Teeth",
                "Nothing bites back anymore.",
                25_000_000, "crystal_drill", 25, "gen:crystal_drill", 2.5,
+               max_level=3, cost_growth=5.0),
+
+    # ---------- Clockwork Sapper ----------
+    UpgradeDef("sapper_springs", "Mainspring Upgrade",
+               "A far prouder ticking. Twice the stride.",
+               800_000, "clockwork_sapper", 10, "gen:clockwork_sapper", 2.0,
+               max_level=5, cost_growth=4.0),
+    UpgradeDef("sapper_steam",   "Pressurized Steam",
+               "Whistles while they work. Alarmingly.",
+               80_000_000, "clockwork_sapper", 25, "gen:clockwork_sapper", 2.5,
                max_level=3, cost_growth=5.0),
 
     # ---------- Stone Golem ----------
@@ -112,6 +152,16 @@ UPGRADES: Sequence[UpgradeDef] = (
                400_000_000, "stone_golem", 25, "gen:stone_golem", 2.5,
                max_level=3, cost_growth=5.0),
 
+    # ---------- Celestial Chorus ----------
+    UpgradeDef("chorus_harmony",  "Fourth Harmony",
+               "A secret note above the chord. Stone can't help but oblige.",
+               10_000_000, "celestial_chorus", 10, "gen:celestial_chorus", 2.5,
+               max_level=5, cost_growth=4.0),
+    UpgradeDef("chorus_antiphon", "Antiphonal Rite",
+               "Two choirs, answering each other across the deep.",
+               1_200_000_000, "celestial_chorus", 25, "gen:celestial_chorus", 2.5,
+               max_level=3, cost_growth=5.0),
+
     # ---------- Arcane Wizard ----------
     UpgradeDef("wizard_familiars", "Familiar Assistants",
                "Wizards outsource shard-shaping to cat spirits.",
@@ -120,6 +170,16 @@ UPGRADES: Sequence[UpgradeDef] = (
     UpgradeDef("wizard_mastery",   "Arcane Mastery",
                "They've all published doctoral theses.",
                5_000_000_000, "arcane_wizard", 25, "gen:arcane_wizard", 2.5,
+               max_level=3, cost_growth=5.0),
+
+    # ---------- Rift Anchor ----------
+    UpgradeDef("rift_polarity",  "Inverted Polarity",
+               "Pulls the good side of elsewhere inside.",
+               130_000_000, "rift_anchor", 10, "gen:rift_anchor", 2.5,
+               max_level=5, cost_growth=4.0),
+    UpgradeDef("rift_widener",   "Rift Widener",
+               "Same as before, but much more of it.",
+               15_000_000_000, "rift_anchor", 25, "gen:rift_anchor", 2.5,
                max_level=3, cost_growth=5.0),
 
     # ---------- Rune Forge ----------
@@ -142,6 +202,16 @@ UPGRADES: Sequence[UpgradeDef] = (
                800_000_000_000, "crystal_dragon", 25, "gen:crystal_dragon", 3.0,
                max_level=3, cost_growth=5.0),
 
+    # ---------- Void Whale ----------
+    UpgradeDef("whale_pod",     "Migrating Pod",
+               "They travel in groups now. The stone shudders.",
+               22_000_000_000, "void_whale", 10, "gen:void_whale", 2.5,
+               max_level=5, cost_growth=4.0),
+    UpgradeDef("whale_deepsong", "Deep Song",
+               "A low hum that strips the walls of shards as they pass.",
+               2_400_000_000_000, "void_whale", 25, "gen:void_whale", 3.0,
+               max_level=3, cost_growth=5.0),
+
     # ---------- Ancient Titan ----------
     UpgradeDef("titan_strength", "Awakened Strength",
                "Titans now skip leg day too.",
@@ -152,6 +222,16 @@ UPGRADES: Sequence[UpgradeDef] = (
                15_000_000_000_000, "ancient_titan", 25, "gen:ancient_titan", 3.0,
                max_level=3, cost_growth=5.0),
 
+    # ---------- Cosmic Weaver ----------
+    UpgradeDef("weaver_loom",    "Loom of Fate",
+               "They've started weaving tomorrow's shards today.",
+               280_000_000_000, "cosmic_weaver", 10, "gen:cosmic_weaver", 3.0,
+               max_level=5, cost_growth=4.0),
+    UpgradeDef("weaver_pattern", "Impossible Pattern",
+               "A shape that, examined closely, un-happens.",
+               30_000_000_000_000, "cosmic_weaver", 25, "gen:cosmic_weaver", 3.0,
+               max_level=3, cost_growth=5.0),
+
     # ---------- Astral Collective ----------
     UpgradeDef("astral_cosmic",   "Cosmic Consciousness",
                "The cavern achieves group meditation.",
@@ -160,6 +240,26 @@ UPGRADES: Sequence[UpgradeDef] = (
     UpgradeDef("astral_galactic", "Galactic Syndicate",
                "Other galaxies apply for membership.",
                200_000_000_000_000, "astral_collective", 25, "gen:astral_collective", 3.0,
+               max_level=3, cost_growth=5.0),
+
+    # ---------- Primordial Hearth ----------
+    UpgradeDef("hearth_eternal", "Eternal Ember",
+               "A coal that remembers being a star.",
+               3_600_000_000_000, "primordial_hearth", 10, "gen:primordial_hearth", 3.0,
+               max_level=5, cost_growth=4.0),
+    UpgradeDef("hearth_forge_gods", "Forge of the Gods",
+               "Smithing things that shouldn't exist. They do now.",
+               420_000_000_000_000, "primordial_hearth", 25, "gen:primordial_hearth", 3.0,
+               max_level=3, cost_growth=5.0),
+
+    # ---------- Universe Tree ----------
+    UpgradeDef("tree_rooted",    "Rooted Through Reality",
+               "Its roots tickle the bedrock of several worlds.",
+               18_000_000_000_000, "universe_tree", 10, "gen:universe_tree", 3.0,
+               max_level=5, cost_growth=4.0),
+    UpgradeDef("tree_seeded",    "Seeded Epochs",
+               "Every fallen leaf sprouts another epoch. A tidy loop.",
+               2_000_000_000_000_000, "universe_tree", 25, "gen:universe_tree", 3.0,
                max_level=3, cost_growth=5.0),
 
     # ---------- Global production ----------
@@ -182,6 +282,14 @@ UPGRADES: Sequence[UpgradeDef] = (
     UpgradeDef("symbiotic_resonance", "Symbiotic Resonance",
                "Every shard, everywhere, at once.",
                10_000_000_000_000_000, "ancient_titan", 50, "global", 2.0,
+               max_level=3, cost_growth=6.0),
+    UpgradeDef("cosmic_weave",    "Cosmic Weave",
+               "All your helpers braid into one quiet machine.",
+               500_000_000_000_000, "cosmic_weaver", 50, "global", 2.0,
+               max_level=3, cost_growth=6.0),
+    UpgradeDef("eternal_bloom",   "Eternal Bloom",
+               "The Tree decides to flower once — and the world brightens.",
+               50_000_000_000_000_000, "universe_tree", 50, "global", 3.0,
                max_level=3, cost_growth=6.0),
 )
 

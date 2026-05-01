@@ -157,6 +157,12 @@ class ShopPanel:
         # successful purchase and decays in update(); while > 0, the row is
         # overlaid with a soft gold tint to draw the player's eye there.
         self._flashes: dict[str, float] = {}
+        # Last measured content height per tab so scroll can be clamped
+        # without the caller having to recompute it. Updated during draw.
+        self._content_heights: dict[ShopTab, float] = {
+            ShopTab.GENERATORS: 0.0,
+            ShopTab.UPGRADES: 0.0,
+        }
 
         # Tab buttons sit just under the header.
         tab_width = SHOP_PANEL_WIDTH / 2
@@ -245,7 +251,9 @@ class ShopPanel:
             return
         # dy > 0 means scroll up — which in a top-anchored list should
         # reveal *earlier* items, i.e. shrink the scroll offset.
-        self._scroll[self._tab] = max(0.0, self._scroll[self._tab] - dy * _SCROLL_STEP)
+        new_scroll = self._scroll[self._tab] - dy * _SCROLL_STEP
+        max_scroll = self._max_scroll(self._content_heights[self._tab])
+        self._scroll[self._tab] = max(0.0, min(max_scroll, new_scroll))
 
     def handle_click(self, x: float, y: float, state: GameState) -> dict | None:
         """Return a dict describing what was clicked, or None."""
@@ -274,14 +282,25 @@ class ShopPanel:
     # ------------------------------------------------------------------
 
     def draw(self, state: GameState) -> None:
+        # Rows draw FIRST — so they can scroll freely above the list
+        # area's top. Then the tabs + header draw on top, covering any
+        # rows that have slid upward. This gives the "scrolling behind
+        # the tabs" effect without needing a scissor box.
         self._draw_panel_background()
-        self._draw_header()
-        self._draw_tabs()
         self._row_hits = []
         if self._tab is ShopTab.GENERATORS:
-            self._draw_generator_rows(state)
+            content_height = self._draw_generator_rows(state)
         else:
-            self._draw_upgrade_rows(state)
+            content_height = self._draw_upgrade_rows(state)
+        self._content_heights[self._tab] = content_height
+        # Opaque strips at top + bottom clip the rows visually by painting
+        # over anything that slid outside the list area.
+        self._draw_list_clip_overlays()
+        self._draw_header()
+        self._draw_tabs()
+        # Scrollbar on the right edge, showing the visible portion of the
+        # content. Drawn last so it always sits on top.
+        self._draw_scrollbar(content_height)
 
     def _draw_panel_background(self) -> None:
         rect = arcade.LBWH(_PANEL_LEFT, 0, SHOP_PANEL_WIDTH, SCREEN_HEIGHT)
@@ -318,7 +337,58 @@ class ShopPanel:
         bottom = 12
         return top, bottom
 
-    def _draw_generator_rows(self, state: GameState) -> None:
+    def _draw_list_clip_overlays(self) -> None:
+        """Opaque strips above and below the list that mask any row
+        content that scrolled outside the visible area. Cheaper than
+        a scissor box and just as convincing visually."""
+        top, bottom = self._list_bounds()
+        # Above the list (up to the tab strip). Background color hides
+        # row content that slid up under the tabs; the tabs then draw
+        # on top of this with their own fill.
+        above = arcade.LBWH(
+            _PANEL_LEFT, top,
+            SHOP_PANEL_WIDTH, SCREEN_HEIGHT - top,
+        )
+        arcade.draw_rect_filled(above, COLOR_PANEL_BG)
+        # Below the list (in case anything bled down).
+        below = arcade.LBWH(_PANEL_LEFT, 0, SHOP_PANEL_WIDTH, bottom)
+        arcade.draw_rect_filled(below, COLOR_PANEL_BG)
+
+    def _max_scroll(self, content_height: float) -> float:
+        top, bottom = self._list_bounds()
+        visible_h = top - bottom
+        return max(0.0, content_height - visible_h)
+
+    def _draw_scrollbar(self, content_height: float) -> None:
+        """Thin vertical scrollbar on the right edge of the shop."""
+        top, bottom = self._list_bounds()
+        visible_h = top - bottom
+        # Only show when there's something to scroll to.
+        if content_height <= visible_h + 1:
+            return
+
+        track_x = _PANEL_LEFT + SHOP_PANEL_WIDTH - 10
+        track_w = 4
+        track = arcade.LBWH(track_x, bottom, track_w, visible_h)
+        arcade.draw_rect_filled(track, (50, 42, 78, 200))
+
+        # Thumb size proportional to visible fraction; clamp to a minimum.
+        thumb_h = max(24.0, visible_h * (visible_h / content_height))
+        scroll = self._scroll[self._tab]
+        max_scroll = self._max_scroll(content_height)
+        # Clamp any drift the scroll may have picked up since the last
+        # mouse event (e.g. from switching tabs).
+        if scroll > max_scroll:
+            scroll = max_scroll
+            self._scroll[self._tab] = scroll
+        scroll_fraction = scroll / max_scroll if max_scroll > 0 else 0.0
+        thumb_y = top - thumb_h - (visible_h - thumb_h) * scroll_fraction
+        thumb = arcade.LBWH(track_x - 2, thumb_y, track_w + 4, thumb_h)
+        arcade.draw_rect_filled(thumb, (180, 160, 240, 220))
+
+    def _draw_generator_rows(self, state: GameState) -> float:
+        """Draw the generator list; return total content height so the
+        scrollbar can size itself correctly."""
         top, bottom = self._list_bounds()
         scroll = self._scroll[ShopTab.GENERATORS]
         y = top + scroll
@@ -331,12 +401,16 @@ class ShopPanel:
             price = cost_for(gen, owned)
             visible.append((gen, owned, price))
 
+        content_height = len(visible) * (_ROW_HEIGHT + _ROW_MARGIN)
+
         for gen, owned, price in visible:
             row_top = y
             row_bottom = row_top - _ROW_HEIGHT
             y = row_bottom - _ROW_MARGIN
 
-            if row_top < bottom or row_bottom > top:
+            # Only cull rows that are fully off-screen. Partial rows are
+            # kept — the clip overlays will mask their bleed.
+            if row_bottom > top + _ROW_HEIGHT or row_top < bottom - _ROW_HEIGHT:
                 continue
 
             self._draw_generator_row(state, gen, owned, price, row_bottom)
@@ -344,6 +418,8 @@ class ShopPanel:
         if not visible:
             self._empty_gens_text.y = (top + bottom) / 2
             self._empty_gens_text.draw()
+
+        return content_height
 
     def _draw_generator_row(
         self,
@@ -421,7 +497,7 @@ class ShopPanel:
 
         self._row_hits.append(_RowHit(kind="gen", key=gen.key, button=row))
 
-    def _draw_upgrade_rows(self, state: GameState) -> None:
+    def _draw_upgrade_rows(self, state: GameState) -> float:
         top, bottom = self._list_bounds()
         scroll = self._scroll[ShopTab.UPGRADES]
         y = top + scroll
@@ -430,17 +506,21 @@ class ShopPanel:
             u for u in UPGRADES if state.is_upgrade_visible(u.key)
         ]
 
+        content_height = len(visible) * (_ROW_HEIGHT + _ROW_MARGIN)
+
         for upgrade in visible:
             row_top = y
             row_bottom = row_top - _ROW_HEIGHT
             y = row_bottom - _ROW_MARGIN
-            if row_top < bottom or row_bottom > top:
+            if row_bottom > top + _ROW_HEIGHT or row_top < bottom - _ROW_HEIGHT:
                 continue
             self._draw_upgrade_row(state, upgrade, row_bottom)
 
         if not visible:
             self._empty_upgrades_text.y = (top + bottom) / 2
             self._empty_upgrades_text.draw()
+
+        return content_height
 
     def _draw_upgrade_row(
         self,

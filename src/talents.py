@@ -18,51 +18,67 @@ class TalentDef:
     name: str
     branch: str  # "click", "idle", "offline", "special"
     description: str
-    # Cost of the Nth level is base_cost * level (so level 3 costs
-    # base*1 + base*2 + base*3 = 6*base cumulatively — steep but fair).
+    # Cost of the Nth level is base_cost * level.
     base_cost: int
     max_level: int
     # Applied per level.
-    effect: str  # "click", "idle", "offline", "start_bonus", "offline_cap"
-    value: float  # meaning depends on effect
+    effect: str
+    value: float
+    # Visual motif drawn inside the node circle — see
+    # ``ui.talent_panel._draw_talent_icon``.
+    icon: str
 
 
 TALENTS: Sequence[TalentDef] = (
     # --- Click branch ---
     TalentDef("tap_precision", "Tap Precision", "click",
               "+15% click power per level.",
-              base_cost=2, max_level=5, effect="click", value=0.15),
+              base_cost=2, max_level=5, effect="click", value=0.15,
+              icon="fist"),
     TalentDef("crit_study", "Critical Study", "click",
               "+5% chance on each click to deal 5x.",
-              base_cost=5, max_level=5, effect="crit_chance", value=0.05),
+              base_cost=5, max_level=5, effect="crit_chance", value=0.05,
+              icon="crosshair"),
+    TalentDef("synced_strike", "Synced Strike", "click",
+              "Each click earns an extra 2% of your per-second rate "
+              "per level. Lets idle investments pay off at the crystal.",
+              base_cost=4, max_level=5, effect="rate_to_click", value=0.02,
+              icon="wave"),
 
     # --- Idle branch ---
     TalentDef("deeper_veins", "Deeper Veins", "idle",
               "+10% passive production per level.",
-              base_cost=2, max_level=5, effect="idle", value=0.10),
+              base_cost=2, max_level=5, effect="idle", value=0.10,
+              icon="vein"),
     TalentDef("cavern_whisper", "Cavern Whisper", "idle",
               "+20% production from your lowest-tier helper per level.",
-              base_cost=4, max_level=3, effect="lowest_tier_boost", value=0.20),
+              base_cost=4, max_level=3, effect="lowest_tier_boost", value=0.20,
+              icon="wave"),
 
     # --- Offline branch ---
     TalentDef("rested_helpers", "Rested Helpers", "offline",
               "+10% offline efficiency per level (base: 50%).",
-              base_cost=3, max_level=5, effect="offline", value=0.10),
+              base_cost=3, max_level=5, effect="offline", value=0.10,
+              icon="zzz"),
     TalentDef("long_shift", "Long Shift", "offline",
               "+2 hours to the offline earnings cap per level.",
-              base_cost=3, max_level=4, effect="offline_cap", value=2 * 3600),
+              base_cost=3, max_level=4, effect="offline_cap", value=2 * 3600,
+              icon="clock"),
 
     # --- Special branch ---
     TalentDef("starting_stash", "Starting Stash", "special",
               "Begin each run with a bonus 500 shards per level "
               "(scales sqrt with prestige count).",
-              base_cost=4, max_level=5, effect="start_bonus", value=500),
+              base_cost=4, max_level=5, effect="start_bonus", value=500,
+              icon="coins"),
     TalentDef("lucky_strike", "Lucky Strike", "special",
               "Random events spawn 20% more often per level.",
-              base_cost=3, max_level=3, effect="event_rate", value=0.20),
+              base_cost=3, max_level=3, effect="event_rate", value=0.20,
+              icon="clover"),
     TalentDef("essence_magnet", "Essence Magnet", "special",
               "+5% essence earned on descent per level.",
-              base_cost=5, max_level=5, effect="essence_bonus", value=0.05),
+              base_cost=5, max_level=5, effect="essence_bonus", value=0.05,
+              icon="magnet"),
 )
 
 

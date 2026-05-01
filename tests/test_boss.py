@@ -9,10 +9,10 @@ from src.entities.cavern_lord import (
 )
 
 
-def test_hp_scales_super_linearly_with_index():
+def test_hp_scales_at_least_ten_times_per_tier():
     a, b, c = boss_hp_for_index(0), boss_hp_for_index(1), boss_hp_for_index(2)
-    assert b > a * 10
-    assert c > b * 10
+    assert b >= a * 10
+    assert c >= b * 10
 
 
 def test_reward_is_proportional_to_hp():

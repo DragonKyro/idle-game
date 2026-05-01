@@ -48,6 +48,7 @@ from src.generators import GENERATORS, GENERATORS_BY_KEY
 from src.number_format import format_number
 from src.save_system import apply_offline_earnings, default_save_path, load_game, save_game
 from src.sprite_factory import (
+    CRYSTAL_TIER_NAMES,
     generator_texture,
     main_crystal_texture,
     shard_particle_texture,
@@ -161,6 +162,7 @@ class GameView(arcade.View):
         self._audio = AudioLibrary()
         self._audio.sfx_volume = self.state.settings.get("sfx_volume", 0.6)
         self._audio.music_volume = self.state.settings.get("music_volume", 0.4)
+        self._audio.start_music()
 
         # --- Entities / UI layers. ---
         self._ambient = _Ambient(self._biome.mote_color)
@@ -213,6 +215,19 @@ class GameView(arcade.View):
             "",
             PLAY_AREA_WIDTH / 2, SCREEN_HEIGHT - 138 + 14,
             COLOR_TEXT_PRIMARY,
+            font_size=12, anchor_x="center", anchor_y="center", bold=True,
+        )
+
+        # Crystal tier label — shown just beneath the "Tap to mine" prompt
+        # so the player can tell *which* tier they're on and see the
+        # appearance change isn't random.
+        from src.entities.main_clicker import (
+            CRYSTAL_BASE_SIZE, CRYSTAL_CENTER_X, CRYSTAL_CENTER_Y,
+        )
+        self._tier_text = arcade.Text(
+            "", CRYSTAL_CENTER_X,
+            CRYSTAL_CENTER_Y - CRYSTAL_BASE_SIZE / 2 - 64,
+            COLOR_TEXT_GOLD,
             font_size=12, anchor_x="center", anchor_y="center", bold=True,
         )
 
@@ -558,8 +573,20 @@ class GameView(arcade.View):
     def _maybe_swap_crystal(self) -> None:
         new_tier = self.state.crystal_tier()
         if new_tier != self._current_tier:
+            old_tier = self._current_tier
             self._current_tier = new_tier
             self._clicker.set_texture(self._crystal_textures[new_tier])
+            if new_tier > old_tier:
+                # Celebrate an upgrade in the clicker's appearance — gives
+                # the player a clear "something meaningful just happened"
+                # beat that otherwise reads as a random color swap.
+                tier_name = CRYSTAL_TIER_NAMES[new_tier]
+                self._toasts.spawn(
+                    f"Crystal evolved to {tier_name}!",
+                    (255, 220, 140),
+                )
+                self._audio.play("level_up", gain=0.7)
+                self._shake.bump(0.3)
 
     def _apply_descent(self) -> None:
         gained = self.state.descend()
@@ -588,7 +615,14 @@ class GameView(arcade.View):
     def _damage_boss(self, x: float, y: float) -> None:
         if self._boss is None:
             return
-        damage = max(1.0, self.state.click_power() * self._combo.bonus_multiplier * 5)
+        # Clicks deal 50x click power against bosses — an order of magnitude
+        # punchier than the previous 5x so hitting "Click the boss!" feels
+        # like swinging a hammer rather than poking it. The combo
+        # multiplier still applies on top, rewarding rapid clicking.
+        damage = max(
+            1.0,
+            self.state.click_power() * self._combo.bonus_multiplier * 50,
+        )
         self._combo.register_click()
         killed = self._boss.take_hit(damage, click_x=x, click_y=y)
         self._audio.play("boss_hit", gain=0.6)
@@ -701,9 +735,28 @@ class GameView(arcade.View):
         # Play area (subject to shake).
         self._ambient.draw()
         self._aura.draw(self.state)
+        self._clicker.draw()
+        # Boss draws *above* the crystal so it's always visible and
+        # clickable when it appears, even though it spawns in a
+        # non-overlapping slot.
         if self._boss is not None:
             self._boss.draw()
-        self._clicker.draw()
+        # Tier label sits just under the crystal's "Tap to mine" prompt
+        # so the player can read what tier the crystal is on and anticipate
+        # the next appearance change.
+        levels = self.state.total_upgrade_levels()
+        from src.game_state import CRYSTAL_LEVELS_PER_TIER, CRYSTAL_MAX_TIER
+        tier = self._current_tier
+        tier_name = CRYSTAL_TIER_NAMES[tier] if tier < len(CRYSTAL_TIER_NAMES) else ""
+        if tier < CRYSTAL_MAX_TIER:
+            progress_into = levels % CRYSTAL_LEVELS_PER_TIER
+            self._tier_text.text = (
+                f"Crystal: {tier_name}  ({progress_into}/{CRYSTAL_LEVELS_PER_TIER} "
+                f"to next)"
+            )
+        else:
+            self._tier_text.text = f"Crystal: {tier_name}  (max tier)"
+        self._tier_text.draw()
         self._particles.draw()
         self._floating.draw()
         self._combo.draw()

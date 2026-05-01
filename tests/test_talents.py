@@ -25,6 +25,14 @@ def test_every_branch_has_at_least_one_talent():
         assert branch in covered
 
 
+def test_every_talent_has_an_icon():
+    # The talent panel dispatches on `icon` — missing ones fall through to
+    # a plain-dot fallback, which still draws but is boring. Guard against
+    # silently introducing a new talent without picking a motif.
+    for t in TALENTS:
+        assert t.icon, f"{t.key} is missing an icon"
+
+
 def test_talent_level_cost_formula():
     talent = TALENTS[0]
     for level in range(1, talent.max_level + 1):

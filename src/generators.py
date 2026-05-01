@@ -24,6 +24,10 @@ class GeneratorDef:
     color: tuple[int, int, int]  # RGB accent color for the sprite
     sprite_shape: str  # hint for procedural sprite: 'pick', 'dwarf', 'cart',
     # 'drill', 'golem', 'wizard', 'forge', 'dragon', 'titan', 'astral'
+    # Hard cap so every helper has a completionist finish line. 200 is
+    # enough to blow past every associated upgrade gate (25, 50, 100)
+    # with headroom, without being infinite.
+    max_count: int = 200
 
 
 # Balance goal: each tier costs roughly 10x the previous and produces ~7–9x,

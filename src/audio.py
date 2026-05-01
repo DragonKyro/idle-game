@@ -219,6 +219,48 @@ def _boss_hit() -> list[float]:
     return _mix([thump, hit + [0.0] * (len(thump) - len(hit))])
 
 
+def _ambient_music() -> list[float]:
+    """20-second cave-ambient loop: low drone + C-major pad + sparse bells.
+
+    The piece is tuned to sound seamless when looped: the very end fades
+    back toward the same steady-state level as the very beginning, so
+    ``loop=True`` doesn't produce a click at the seam.
+    """
+    duration = 20.0
+    n = int(duration * _SAMPLE_RATE)
+
+    # Very low drone — slow amplitude modulation gives it some breath.
+    drone = []
+    for i in range(n):
+        t = i / _SAMPLE_RATE
+        am = 0.5 + 0.3 * math.sin(2 * math.pi * 0.07 * t)
+        drone.append(math.sin(2 * math.pi * 55.0 * t) * am * 0.35)
+
+    # Soft C3+E3+G3 pad with slow swell.
+    pad_env = _adsr(0.15, 0.1, 0.55, 0.15)
+    pad = _mix([
+        _synth(freq=_note(48), duration=duration, wave_type="sine", envelope=pad_env),
+        _synth(freq=_note(52), duration=duration, wave_type="sine", envelope=pad_env),
+        _synth(freq=_note(55), duration=duration, wave_type="sine", envelope=pad_env),
+    ])
+    pad = [v * 0.18 for v in pad]
+
+    # Sparse high bells at irregular times — gives the loop character.
+    bells = [0.0] * n
+    bell_env = _adsr(0.01, 0.15, 0.25, 0.5)
+    for bell_time, pitch in ((3.0, 84), (7.5, 88), (12.0, 84), (16.5, 91)):
+        bell = _synth(freq=_note(pitch), duration=1.8, wave_type="sine", envelope=bell_env)
+        start = int(bell_time * _SAMPLE_RATE)
+        for i, v in enumerate(bell):
+            idx = start + i
+            if idx < n:
+                bells[idx] += v * 0.18
+
+    combined = _mix([drone, pad, bells])
+    # Extra soft clip for safety — layered sines can creep past 1.0 at peaks.
+    return [max(-0.8, min(0.8, v)) for v in combined]
+
+
 def _boss_defeat() -> list[float]:
     # Ascending chord with a cymbal-y noise tail.
     env = _adsr(0.005, 0.08, 0.35, 0.25)
@@ -243,7 +285,12 @@ _SOUND_RECIPES: dict[str, Callable[[], list[float]]] = {
     "event": _event_chime,
     "boss_hit": _boss_hit,
     "boss_defeat": _boss_defeat,
+    # Looped as background music.
+    "ambient": _ambient_music,
 }
+
+# Names classified as music (vs SFX). Affects which volume knob applies.
+_MUSIC_SOUNDS = frozenset({"ambient"})
 
 
 # ----------------------------------------------------------------------
@@ -261,9 +308,9 @@ class AudioLibrary:
     def __init__(self) -> None:
         self._sounds: dict[str, arcade.Sound] = {}
         self._sfx_volume: float = 0.6
-        # Space reserved for future ambient bed.
         self._music_volume: float = 0.4
         self._muted: bool = False
+        self._music_player = None  # pyglet.media.Player while music is live
 
         for name, recipe in _SOUND_RECIPES.items():
             path = _SOUND_DIR / f"{name}.wav"
@@ -271,7 +318,9 @@ class AudioLibrary:
                 samples = recipe()
                 _save_wav(samples, path)
             try:
-                self._sounds[name] = arcade.Sound(path)
+                # Music uses streaming to avoid holding 20s of PCM in RAM.
+                streaming = name in _MUSIC_SOUNDS
+                self._sounds[name] = arcade.Sound(path, streaming=streaming)
             except Exception:
                 # Playback is optional — keep the rest of the game usable.
                 pass
@@ -293,6 +342,12 @@ class AudioLibrary:
     @music_volume.setter
     def music_volume(self, value: float) -> None:
         self._music_volume = max(0.0, min(1.0, value))
+        # Live-update the currently playing music player if any.
+        if self._music_player is not None:
+            try:
+                self._music_player.volume = 0.0 if self._muted else self._music_volume
+            except Exception:
+                pass
 
     @property
     def muted(self) -> bool:
@@ -321,3 +376,26 @@ class AudioLibrary:
             # Arcade / pyglet sometimes raises if the audio device is busy;
             # swallowing keeps gameplay smooth.
             pass
+
+    def start_music(self, name: str = "ambient") -> None:
+        """Start the looped music bed. Safe to call repeatedly."""
+        if self._music_player is not None:
+            return
+        sound = self._sounds.get(name)
+        if sound is None:
+            return
+        volume = 0.0 if self._muted else self._music_volume
+        try:
+            self._music_player = sound.play(volume=volume, loop=True)
+        except Exception:
+            self._music_player = None
+
+    def stop_music(self) -> None:
+        if self._music_player is None:
+            return
+        try:
+            self._music_player.pause()
+            self._music_player.delete()
+        except Exception:
+            pass
+        self._music_player = None

@@ -20,6 +20,7 @@ class CrystalCavernWindow(arcade.Window):
         # Make sure the wallet is never lost when the player closes the window.
         try:
             save_game(self._view.state)
+            self._view._audio.stop_music()
         finally:
             super().on_close()
 

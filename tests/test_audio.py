@@ -43,3 +43,18 @@ def test_descend_is_about_one_second():
     descend = audio._descend()
     # Roughly 1s at 22kHz = ~22050 samples; tolerate small rounding.
     assert 21_000 <= len(descend) <= 23_000
+
+
+def test_ambient_music_loop_is_twenty_seconds():
+    loop = audio._ambient_music()
+    # 20s at 22050 Hz.
+    assert 22050 * 19 <= len(loop) <= 22050 * 21
+
+
+def test_ambient_is_classified_as_music():
+    assert "ambient" in audio._MUSIC_SOUNDS
+
+
+def test_ambient_stays_within_range():
+    loop = audio._ambient_music()
+    assert all(-1.0 <= s <= 1.0 for s in loop)

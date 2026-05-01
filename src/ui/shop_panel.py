@@ -92,6 +92,11 @@ class _GenRowTexts:
             "shards", 0, 0, COLOR_TEXT_DIM,
             font_size=9, anchor_x="right", anchor_y="baseline",
         )
+        # Shown in place of the price when the generator is at max_count.
+        self.maxed_badge = arcade.Text(
+            "MAX", 0, 0, COLOR_TEXT_GOLD,
+            font_size=14, anchor_x="right", anchor_y="baseline", bold=True,
+        )
 
 
 class _UpgradeRowTexts:
@@ -354,10 +359,16 @@ class ShopPanel:
             width=SHOP_PANEL_WIDTH - 2 * _ROW_MARGIN,
             height=_ROW_HEIGHT,
         )
-        affordable = state.shards >= price
+        maxed = state.generator_is_maxed(gen)
+        affordable = state.shards >= price and not maxed
         hovered = row.contains(self._mouse_x, self._mouse_y)
-        row.draw_background(hovered=hovered, affordable=affordable)
-        self._draw_flash_overlay(gen.key, row)
+        row.draw_background(
+            hovered=hovered and not maxed,
+            affordable=affordable,
+            enabled=not maxed,
+        )
+        if not maxed:
+            self._draw_flash_overlay(gen.key, row)
 
         tex = self._generator_textures.get(gen.key)
         if tex is not None:
@@ -374,11 +385,13 @@ class ShopPanel:
 
         t.name.x = text_left
         t.name.y = row.top - 22
+        t.name.color = COLOR_TEXT_DIM if maxed else COLOR_TEXT_PRIMARY
         t.name.draw()
 
         t.owned.x = row.right - _ROW_PADDING
         t.owned.y = row.top - 22
-        t.owned.text = f"Owned: {owned}"
+        t.owned.text = f"Owned: {owned}/{gen.max_count}"
+        t.owned.color = COLOR_TEXT_GOLD if maxed else COLOR_TEXT_SECONDARY
         t.owned.draw()
 
         per_unit = state.generator_rate(gen)
@@ -387,15 +400,20 @@ class ShopPanel:
         t.rate.text = f"+{format_rate(per_unit)} each"
         t.rate.draw()
 
-        t.price.x = row.right - _ROW_PADDING
-        t.price.y = row.bottom + 10
-        t.price.text = format_number(price)
-        t.price.color = COLOR_TEXT_OK if affordable else COLOR_TEXT_DIM
-        t.price.draw()
+        if maxed:
+            t.maxed_badge.x = row.right - _ROW_PADDING
+            t.maxed_badge.y = row.bottom + 10
+            t.maxed_badge.draw()
+        else:
+            t.price.x = row.right - _ROW_PADDING
+            t.price.y = row.bottom + 10
+            t.price.text = format_number(price)
+            t.price.color = COLOR_TEXT_OK if affordable else COLOR_TEXT_DIM
+            t.price.draw()
 
-        t.price_label.x = row.right - _ROW_PADDING
-        t.price_label.y = row.bottom + 4
-        t.price_label.draw()
+            t.price_label.x = row.right - _ROW_PADDING
+            t.price_label.y = row.bottom + 4
+            t.price_label.draw()
 
         t.flavor.x = text_left
         t.flavor.y = row.bottom + 8

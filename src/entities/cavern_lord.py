@@ -21,10 +21,13 @@ from arcade.types import Color
 from src.constants import PLAY_AREA_WIDTH, SCREEN_HEIGHT
 
 
-# HP thresholds roughly follow ``10^(2 * bosses_defeated + 6)`` so the
-# first boss has 1M HP, next 100M, etc. Reward scales accordingly.
+# HP curve: each boss has roughly 10x the previous one's HP. This keeps
+# fights meaningful without requiring the player to hoard millions of
+# click levels — combined with the 50x click-damage multiplier and the
+# Synced Strike talent, bosses are beatable at the progression point
+# where they spawn.
 def boss_hp_for_index(index: int) -> float:
-    return 1_000_000 * (100 ** index)
+    return 100_000 * (10 ** index)
 
 
 def boss_reward_for_index(index: int) -> float:
@@ -156,9 +159,11 @@ class CavernLord:
 
 
 def spawn_boss(index: int) -> CavernLord:
-    # Drop it in slightly off-center so it reads as its own entity,
-    # not an extension of the crystal.
-    x = PLAY_AREA_WIDTH / 2 + random.uniform(-60, 60)
-    y = (SCREEN_HEIGHT - 140) / 2 + 20
+    # Spawn clearly ABOVE the crystal so the two aren't visually fighting
+    # for the same pixels. Crystal center sits around y=350 with a
+    # ~200-wide body; we drop the boss at y=540 so it occupies the upper
+    # play area with a clean gap to both the HUD and the crystal.
+    x = PLAY_AREA_WIDTH / 2 + random.uniform(-40, 40)
+    y = SCREEN_HEIGHT - 260
     hp = boss_hp_for_index(index)
     return CavernLord(index=index, max_hp=hp, hp=hp, x=x, y=y)

@@ -276,6 +276,46 @@ def test_crystal_tier_grows_with_total_levels_and_prestige():
     assert state.crystal_tier() == 6
 
 
+def test_cannot_buy_generator_past_max_count():
+    gen = GENERATORS[0]
+    state = GameState(shards=1e20)
+    # Fill to max_count by direct assignment.
+    state.owned[gen.key] = gen.max_count
+    assert state.generator_is_maxed(gen)
+    assert not state.can_afford_generator(gen)
+    assert not state.buy_generator(gen)
+    # Still pegged at max.
+    assert state.owned[gen.key] == gen.max_count
+
+
+def test_shards_to_next_essence_progress_toward_first_descent():
+    state = GameState()
+    # At zero earnings, you need the full ESSENCE_THRESHOLD (1e10) to
+    # unlock the first essence.
+    assert state.shards_to_next_essence() == 1e10
+
+    # Earn some — the counter should shrink.
+    state.total_earned = 5e9
+    assert 0 < state.shards_to_next_essence() < 1e10
+
+    # Cross the threshold — pending_essence ticks up and the counter
+    # now points at the next integer of the sqrt curve.
+    state.total_earned = 1e10
+    assert state.pending_essence() >= 1
+    # Distance to 2 essence is (4 * 1e10) - 1e10 = 3e10.
+    assert abs(state.shards_to_next_essence() - 3e10) < 1e-6
+
+
+def test_synced_strike_talent_adds_rate_slice_to_click_power():
+    state = GameState()
+    state.owned[GENERATORS[0].key] = 10  # gives the state a real total_rate
+    base = state.click_power()
+    # One level of synced_strike adds 2% of total_rate to click power.
+    state.talent_levels["synced_strike"] = 1
+    expected = base + 0.02 * state.total_rate()
+    assert math.isclose(state.click_power(), expected)
+
+
 def test_generator_unlock_gating():
     state = GameState(total_earned=0)
     assert state.is_generator_unlocked(GENERATORS[0])

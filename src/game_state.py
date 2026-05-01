@@ -155,7 +155,15 @@ class GameState:
                 power *= upgrade.multiplier ** level
         # Talent: flat +X% click per level, stacks additively.
         power *= 1.0 + self._talent_value("click")
-        return power * self._global_multiplier()
+        total = power * self._global_multiplier()
+        # Synced Strike: add a slice of per-second rate *after* the
+        # multiplicative block so the "share" is an explicit proportion
+        # of idle income. Guarded against recursion — total_rate never
+        # calls click_power.
+        rate_share = self._talent_value("rate_to_click")
+        if rate_share > 0:
+            total += rate_share * self.total_rate()
+        return total
 
     def crit_chance(self) -> float:
         """Probability a click deals 5x — set by the crit_study talent."""
@@ -251,10 +259,17 @@ class GameState:
         self.total_earned += gained
         return gained
 
+    def generator_is_maxed(self, gen: GeneratorDef) -> bool:
+        return self.owned.get(gen.key, 0) >= gen.max_count
+
     def can_afford_generator(self, gen: GeneratorDef) -> bool:
+        if self.generator_is_maxed(gen):
+            return False
         return self.shards >= cost_for(gen, self.owned.get(gen.key, 0))
 
     def buy_generator(self, gen: GeneratorDef) -> bool:
+        if self.generator_is_maxed(gen):
+            return False
         owned_count = self.owned.get(gen.key, 0)
         price = cost_for(gen, owned_count)
         if self.shards < price:
@@ -313,6 +328,16 @@ class GameState:
         # Talent boost rounds to nearest; players see a clean integer reward.
         boosted = raw * self.essence_bonus_multiplier()
         return int(math.floor(boosted))
+
+    def shards_to_next_essence(self) -> float:
+        """How many more shards you need to earn to push ``pending_essence``
+        up by one. Surfacing this in the HUD teaches new players that
+        essence comes from descending after a run."""
+        progress = max(0.0, self.total_earned - self.last_descend_total)
+        current = math.floor(math.sqrt(progress / ESSENCE_THRESHOLD))
+        # Next integer of the sqrt curve — scaled back by the bonus if any.
+        target_raw = (current + 1) ** 2 * ESSENCE_THRESHOLD
+        return max(0.0, target_raw - progress)
 
     def can_descend(self) -> bool:
         return self.pending_essence() >= 1

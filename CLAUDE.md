@@ -29,9 +29,10 @@ theme-agnostic.
   called from inside `GameView.__init__`, which itself is constructed
   after `arcade.Window.__init__` — do NOT build the library at module
   import time or you'll crash headless.
-- **Playback uses one entry point.** Always go through
-  `AudioLibrary.play(name, gain=...)` so volume/mute settings are
-  honored centrally.
+- **SFX and music are routed separately.** Names in `_MUSIC_SOUNDS` are
+  loaded with `streaming=True` and played via `start_music` / looped;
+  SFX go through `play(name, gain=...)`. Music volume changes update
+  the live pyglet player's `.volume` attribute.
 - **Pure-Python stays pure.** `audio.py`, `achievements.py`,
   `talents.py`, `biomes.py`, `game_state.py`, and the core math modules
   must not import `arcade`. Tests rely on this.
@@ -44,7 +45,16 @@ theme-agnostic.
   both up to date on descend / boss-defeat.
 - **Boss state is session-only.** Don't persist `GameView._boss` —
   bosses re-gate on `state.total_earned` crossing the next threshold in
-  `_BOSS_THRESHOLDS`, using `state.bosses_defeated` as the index.
+  `_BOSS_THRESHOLDS`, using `state.bosses_defeated` as the index. Bosses
+  spawn at `y ≈ SCREEN_HEIGHT - 260` (above the crystal) and are drawn
+  *after* the clicker in `on_draw` so they always read as the foreground
+  element of a fight.
+- **Generators have a `max_count` cap (default 200).** Any new purchase
+  path must go through `GameState.buy_generator`, which refuses past the
+  cap. Shop rows mirror the upgrade `MAX` badge when they hit it.
+- **Clicks against bosses use a 50× multiplier.** If you tune this,
+  do it in `GameView._damage_boss`, not in `click_power` — the crystal's
+  own click path shouldn't change.
 - **Biomes are derived, not stored.** `biome_for_prestige(prestige_count)`
   is the single source of truth; `GameView` regenerates the background
   texture and re-tints the ambient motes when the prestige count
@@ -92,7 +102,7 @@ theme-agnostic.
 ```bash
 pip install -r requirements.txt        # or `pip install -e .` (pyproject.toml)
 python crystal_cavern.py   # launch the game
-pytest                  # run unit tests (113 tests, all pure-Python)
+pytest                  # run unit tests (120 tests, all pure-Python)
 ```
 
 Point the save file elsewhere to avoid clobbering a real playthrough:
@@ -270,8 +280,11 @@ Dependency direction is one-way top-to-bottom. Core modules never import
 1. Write a recipe function in [src/audio.py](src/audio.py) that returns
    `list[float]` in `[-1, 1]` at `_SAMPLE_RATE`.
 2. Register it in `_SOUND_RECIPES` under a stable name.
-3. Call `self._audio.play("name")` from the game view at the event.
-4. Delete `assets/sounds/<name>.wav` if you change the recipe — it's
+3. If it's a looping music bed (not a SFX), also add the name to
+   `_MUSIC_SOUNDS` so it loads in streaming mode and starts via
+   `start_music`.
+4. Call `self._audio.play("name")` from the game view at the event.
+5. Delete `assets/sounds/<name>.wav` if you change the recipe — it's
    cached, and the file wins over the recipe.
 
 ## Tuning prestige

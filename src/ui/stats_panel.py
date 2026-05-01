@@ -121,13 +121,31 @@ class StatsPanel:
         self._total_earned.draw()
         self._total_clicks.draw()
 
-        # Essence / prestige info, top-right of the HUD.
-        if state.essence > 0 or state.prestige_count > 0:
-            self._essence_label.text = f"Essence: {state.essence}"
-            self._essence_sub.text = (
-                f"x{state.essence_multiplier():.2f} prod • Descents: "
-                f"{state.prestige_count}"
-            )
+        # Essence / prestige info — top-right of the HUD. Shown as soon
+        # as the player earns their first shard so they can learn how the
+        # Descend economy works before they're eligible to descend.
+        show_essence = state.total_earned > 0
+        if show_essence:
+            pending = state.pending_essence()
+            self._essence_label.text = f"✦ Essence: {state.essence}"
+            if pending >= 1:
+                # Teach the reward path — what the glowing button grants.
+                self._essence_sub.text = (
+                    f"Ready to Descend: +{pending} essence!"
+                )
+            elif state.prestige_count == 0:
+                # Pre-first-descent: show progress to the very first essence.
+                needed = state.shards_to_next_essence()
+                self._essence_sub.text = (
+                    f"Earn {format_number(needed)} more to unlock Descend"
+                )
+            else:
+                # Post-first-descent: combine current bonus + progress hint.
+                needed = state.shards_to_next_essence()
+                self._essence_sub.text = (
+                    f"x{state.essence_multiplier():.2f} prod • "
+                    f"next essence in {format_number(needed)}"
+                )
             self._essence_label.draw()
             self._essence_sub.draw()
 
